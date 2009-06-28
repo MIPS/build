@@ -768,7 +768,7 @@ otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
 # Keys authorized to sign OTA packages this build will accept.
 ifeq ($(INCLUDE_TEST_OTA_KEYS),true)
   OTA_PUBLIC_KEYS := \
-  	$(sort $(SRC_TARGET_DIR)/product/security/testkey.x509.pem $(OTA_PUBLIC_KEYS))
+	$(sort $(SRC_TARGET_DIR)/product/security/testkey.x509.pem $(OTA_PUBLIC_KEYS))
 endif
 
 ifeq ($(OTA_PUBLIC_KEYS),)
@@ -1041,7 +1041,7 @@ ifneq ($(TARGET_SIMULATOR),true)
 
 INTERNAL_EMULATOR_PACKAGE_FILES += \
         $(HOST_OUT_EXECUTABLES)/emulator$(HOST_EXECUTABLE_SUFFIX) \
-        prebuilt/android-arm/kernel/kernel-qemu \
+        prebuilt/android-$(TARGET_ARCH)/kernel-qemu \
         $(INSTALLED_RAMDISK_TARGET) \
 		$(INSTALLED_SYSTEMIMAGE) \
 		$(INSTALLED_USERDATAIMAGE_TARGET)
