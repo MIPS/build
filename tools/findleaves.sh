@@ -22,6 +22,7 @@
 
 set -o nounset  # fail when dereferencing unset variables
 set -o errexit  # fail if any subcommand fails
+set -f		# don't expand pathnames
 
 progName=`basename $0`
 
