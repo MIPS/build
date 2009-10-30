@@ -96,8 +96,7 @@ TARGET_ERROR_FLAGS := -Werror=return-type
 # ---------------------------------------------------------------
 # Try to include buildspec.mk, which will try to set stuff up.
 # If this file doesn't exist, the environemnt variables will
-# be used, and if that doesn't work, then the default is an
-# arm build
+# be used, and if that doesn't work, then the build will fail
 -include $(TOPDIR)buildspec.mk
 
 # ---------------------------------------------------------------

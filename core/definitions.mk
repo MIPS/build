@@ -716,7 +716,7 @@ endef
 
 define transform-cpp-to-o
 @mkdir -p $(dir $@)
-@echo "target $(PRIVATE_ARM_MODE) C++: $(PRIVATE_MODULE) <= $<"
+@echo "target $(PRIVATE_ARCH_MODE) C++: $(PRIVATE_MODULE) <= $<"
 $(hide) $(PRIVATE_CXX) \
 	$(foreach incdir, \
 	    $(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
@@ -731,7 +731,7 @@ $(hide) $(PRIVATE_CXX) \
 	$(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
 	    $(TARGET_GLOBAL_CFLAGS) \
 	    $(TARGET_GLOBAL_CPPFLAGS) \
-	    $(PRIVATE_ARM_CFLAGS) \
+	    $(PRIVATE_ARCH_CFLAGS) \
 	 ) \
 	-fno-rtti \
 	$(PRIVATE_CFLAGS) \
@@ -762,7 +762,7 @@ $(hide) $(PRIVATE_CC) \
 	-c \
 	$(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
 	    $(TARGET_GLOBAL_CFLAGS) \
-	    $(PRIVATE_ARM_CFLAGS) \
+	    $(PRIVATE_ARCH_CFLAGS) \
 	 ) \
 	$(PRIVATE_CFLAGS) \
 	$(1) \
@@ -771,7 +771,7 @@ $(hide) $(PRIVATE_CC) \
 endef
 
 define transform-c-to-o-no-deps
-@echo "target $(PRIVATE_ARM_MODE) C: $(PRIVATE_MODULE) <= $<"
+@echo "target $(PRIVATE_ARCH_MODE) C: $(PRIVATE_MODULE) <= $<"
 $(call transform-c-or-s-to-o-no-deps, )
 endef
 
@@ -1314,12 +1314,10 @@ $(hide) $(AAPT) package -z -u $(PRIVATE_AAPT_FLAGS) \
     -F $@
 endef
 
-#TODO: Allow library directory to be specified based on the target
-#      CPU and ABI instead of being hard coded as armeabi.
 define add-jni-shared-libs-to-package
 $(hide) rm -rf $(dir $@)lib
-$(hide) mkdir -p $(dir $@)lib/armeabi
-$(hide) cp $(PRIVATE_JNI_SHARED_LIBRARIES) $(dir $@)lib/armeabi
+$(hide) mkdir -p $(dir $@)lib/$(TARGET_CPU_ABI)
+$(hide) cp $(PRIVATE_JNI_SHARED_LIBRARIES) $(dir $@)lib/$(TARGET_CPU_ABI)
 $(hide) (cd $(dir $@) && zip -r $(notdir $@) lib)
 $(hide) rm -rf $(dir $@)lib
 endef

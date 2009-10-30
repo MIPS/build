@@ -50,7 +50,7 @@ endif
 
 # ---------------------------------------------------------------
 # Set up configuration for host machine.  We don't do cross-
-# compiles except for arm, so the HOST is whatever we are
+# compiles except for arm/mips, so the HOST is whatever we are
 # running on
 
 UNAME := $(shell uname -sm)
@@ -114,7 +114,7 @@ endif
 # Set up configuration for target machine.
 # The following must be set:
 # 		TARGET_OS = { linux }
-# 		TARGET_ARCH = { arm | x86 }
+# 		TARGET_ARCH = { arm | x86 | mips }
 
 
 # if we're build the simulator, HOST_* is TARGET_* (except for BUILD_TYPE)
@@ -127,7 +127,7 @@ TARGET_ARCH := $(HOST_ARCH)
 TARGET_OS := $(HOST_OS)
 else
 ifeq ($(TARGET_ARCH),)
-TARGET_ARCH := arm
+$(error TARGET_ARCH undefined)
 endif
 TARGET_OS := linux
 endif
@@ -270,7 +270,13 @@ ifeq ($(TARGET_SIMULATOR),true)
 	ABP:=$(ABP):$(TARGET_OUT_EXECUTABLES)
 else
 	# this should be copied to HOST_OUT_EXECUTABLES instead
-	ABP:=$(ABP):$(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/arm-eabi-4.2.1/bin
+	ifeq ($(TARGET_ARCH),arm)
+		ABP:=$(ABP):$(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/arm-eabi-4.2.1/bin
+	endif
+	ifeq ($(TARGET_ARCH),mips)
+		ABP:=$(ABP):$(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-4.3/bin
+	endif
+
 endif
 ANDROID_BUILD_PATHS := $(ABP)
 ANDROID_PREBUILTS := prebuilt/$(HOST_PREBUILT_TAG)
