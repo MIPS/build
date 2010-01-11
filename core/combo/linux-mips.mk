@@ -6,7 +6,7 @@
 # TARGET_CPU_TUNE:	Used in -mtune=$(TARGET_CPU_TUNE)
 # TARGET_CPU_FLOAT:	Used in -m$(TARGET_CPU_FLOAT)
 # TARGET_CPU_ENDIAN:	Used in -$(TARGET_CPU_ENDIAN)
-# TARGET_PAGE_SIZE:	Used in -DPAGE_SIZE=$(TARGET_PAGE_SIZE)
+# TARGET_CPU_PAGESHIFT:	Used in -DPAGE_SHIFT=$(TARGET_CPU_PAGESHIFT)
 
 ifeq ($(strip $(TARGET_CPU_ARCH)),)
 TARGET_CPU_ARCH := mips32r2
@@ -25,12 +25,13 @@ ifeq ($(strip $(TARGET_CPU_ENDIAN)),)
 TARGET_CPU_ENDIAN := EL
 $(warning Defaulted TARGET_CPU_ENDIAN to $(TARGET_CPU_ENDIAN))
 endif
+ifeq ($(strip $(TARGET_CPU_PAGESHIFT)),)
 #The userland code can determine the kernel page size dynamically
-# but it might be better for to set a default value here
-#ifeq ($(strip $(TARGET_PAGE_SIZE)),)
-#TARGET_PAGE_SIZE := 4096
-#$(warning Defaulted TARGET_PAGE_SIZE to $(TARGET_TARGET_PAGE_SIZE))
-#endif
+TARGET_PAGE_SHIFT :=
+else
+#Set the page size explicitly
+TARGET_PAGE_SHIFT := -DPAGE_SHIFT=$(TARGET_CPU_PAGESHIFT)
+endif
 
 # You can set TARGET_TOOLS_PREFIX to get gcc from somewhere else
 ifeq ($(strip $($(combo_target)TOOLS_PREFIX)),)
@@ -62,7 +63,7 @@ endif
 $(combo_target)GLOBAL_CFLAGS += \
 			-Ulinux \
 			-march=$(TARGET_CPU_ARCH) -mtune=$(TARGET_CPU_TUNE) -m$(TARGET_CPU_FLOAT) \
-			-DPAGE_SIZE=$(TARGET_PAGE_SIZE) \
+			$(TARGET_PAGE_SHIFT) \
 			-fpic \
 			-ffunction-sections \
 			-funwind-tables \
