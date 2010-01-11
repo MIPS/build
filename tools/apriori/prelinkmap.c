@@ -24,8 +24,14 @@ static mapentry *maplist = 0;
    prelink map, or the prelink step will fail.
 */
 
+#ifdef TARGET_ARCH_arm
 #define PRELINK_MIN 0x90000000
-#define PRELINK_MAX 0xBFFFFFFF
+#define PRELINK_MAX 0xB0000000
+#endif
+#ifdef TARGET_ARCH_mips
+#define PRELINK_MIN 0x60000000
+#define PRELINK_MAX 0x7F000000
+#endif
 
 void pm_init(const char *file)
 {
