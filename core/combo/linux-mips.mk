@@ -36,7 +36,7 @@ endif
 # You can set TARGET_TOOLS_PREFIX to get gcc from somewhere else
 ifeq ($(strip $($(combo_target)TOOLS_PREFIX)),)
 $(combo_target)TOOLS_PREFIX := \
-	mips-linux-gnu-
+	prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-4.3/bin/mips-linux-gnu-
 endif
 
 $(combo_target)CC := $($(combo_target)TOOLS_PREFIX)gcc$(HOST_EXECUTABLE_SUFFIX) -$(TARGET_CPU_ENDIAN)
