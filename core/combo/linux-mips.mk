@@ -36,7 +36,7 @@ endif
 # You can set TARGET_TOOLS_PREFIX to get gcc from somewhere else
 ifeq ($(strip $($(combo_target)TOOLS_PREFIX)),)
 $(combo_target)TOOLS_PREFIX := \
-	prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-4.3/bin/mips-linux-gnu-
+	mips-linux-gnu-
 endif
 
 $(combo_target)CC := $($(combo_target)TOOLS_PREFIX)gcc$(HOST_EXECUTABLE_SUFFIX) -$(TARGET_CPU_ENDIAN)
@@ -139,7 +139,7 @@ $(TARGET_CXX) \
 	$(call normalize-target-libraries,$(PRIVATE_ALL_STATIC_LIBRARIES)) \
 	$(call normalize-target-libraries,$(PRIVATE_ALL_SHARED_LIBRARIES)) \
 	-o $@ \
-	$(PRIVATE_LDFLAGS) \
+	$(PRIVATE_LDFLAGS) -lgcc -lgcc_eh \
 	$(TARGET_LIBGCC)
 endef
 
@@ -156,7 +156,7 @@ $(TARGET_CXX) -nostdlib -Bdynamic -Wl,-T,$(BUILD_SYSTEM)/mipself.x \
 	$(PRIVATE_ALL_OBJECTS) \
 	$(call normalize-target-libraries,$(PRIVATE_ALL_STATIC_LIBRARIES)) \
 	$(PRIVATE_LDFLAGS) \
-	$(TARGET_LIBGCC) \
+	$(TARGET_LIBGCC) -lgcc -lgcc_eh \
 	$(TARGET_CRTEND_O)
 endef
 
@@ -169,6 +169,6 @@ $(TARGET_CXX) -nostdlib -Bstatic -Wl,-T,$(BUILD_SYSTEM)/mipself.x \
 	$(PRIVATE_LDFLAGS) \
 	$(PRIVATE_ALL_OBJECTS) \
 	$(call normalize-target-libraries,$(PRIVATE_ALL_STATIC_LIBRARIES)) \
-	$(TARGET_LIBGCC) \
+	$(TARGET_LIBGCC) -lgcc -lgcc_eh \
 	$(TARGET_CRTEND_O)
 endef

@@ -149,3 +149,10 @@ libtrace_test.so        0x6A300000
 libsrec_jni.so          0x6A200000
 libcerttool_jni.so      0x6A100000
 
+# Sigma Designs libraries
+libcore.so                      0x61400000
+libdisplay.so                   0x61000000
+libdrm.so                       0x60c00000
+libhw.so                        0x60800000
+libplayback.so                  0x60000000
+
