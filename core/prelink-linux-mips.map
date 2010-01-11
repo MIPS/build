@@ -50,7 +50,6 @@ libdvm.so               0x7D000000
 
 # graphics
 libpixelflinger.so      0x7CF00000
-libcorecg.so            0x7CE00000
 libsurfaceflinger.so    0x7CD00000
 libagl.so               0x7CC00000
 
@@ -148,6 +147,13 @@ librpc.so               0x6A400000
 libtrace_test.so        0x6A300000
 libsrec_jni.so          0x6A200000
 libcerttool_jni.so      0x6A100000
+libacc.so               0x6A000000
+libbinder.so            0x69F00000
+libskia.so              0x69000000
+libGLES_android.so      0x68800000
+libRS.so                0x68000000
+libaudiopolicygeneric.so 0x67c00000
+librs_jni.so            0x67800000
 
 # Sigma Designs libraries
 libcore.so                      0x61400000
