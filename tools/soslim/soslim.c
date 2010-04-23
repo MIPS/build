@@ -23,9 +23,40 @@
 
 
 #ifdef MIPS_SPECIFIC_HACKS
-static int mips_adjust_got_section(GElf_Shdr *, Elf_Scn *, Elf_Scn *, Elf_Scn *, int);
 
-static int mips_adjust_rel32(shdr_info_t *, int, Ebl *, Elf_Scn *, int);
+//RT-RK: soslim endian fix
+typedef unsigned (* assign_func) (unsigned x);
+
+//RT-RK: soslim endian fix
+static unsigned _direct(unsigned x)
+{
+	return x;
+}
+
+//RT-RK: soslim endian fix
+static unsigned _swap(unsigned x)
+{
+	unsigned char * p = (unsigned char *) &x;
+	return (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
+}
+
+//RT-RK: soslim endian fix
+static assign_func _get_assign(Elf * elf)
+{
+	GElf_Ehdr ehdr_mem;
+	GElf_Ehdr * ehdr = gelf_getehdr (elf, &ehdr_mem);
+	int target_endian_little = ehdr->e_ident[EI_DATA] == ELFDATA2LSB;
+	int host_endian_littl = is_host_little();
+	int same_endian = !target_endian_little == !host_endian_littl;
+	assign_func assign = same_endian ? _direct : _swap;
+
+	return assign;
+}
+
+static int mips_adjust_got_section(GElf_Shdr *, Elf_Scn *, Elf_Scn *, Elf_Scn *, int, Elf *);
+
+static int mips_adjust_rel32(shdr_info_t *, int, Ebl *, Elf_Scn *, int, Elf *);
+
 #endif
 
 
@@ -527,14 +558,14 @@ void clone_elf(Elf *elf, Elf *newelf,
 	if (adjust != 0) {
 		for (cnt = 1; cnt < shnum; cnt++) {
 			if (shdr_info[cnt].shdr.sh_type == SHT_REL) {
-				mips_adjust_rel32(shdr_info, shnum, ebl, shdr_info[cnt].scn, adjust);
+				mips_adjust_rel32(shdr_info, shnum, ebl, shdr_info[cnt].scn, adjust, elf);
 			}
 		}
 		mips_adjust_got_section(&shdr_info[dynamic_idx].shdr,
 					shdr_info[dynamic_idx].scn,
 					shdr_info[got_idx].scn,
 					shdr_info[dynsym_idx].scn,
-					adjust);
+					adjust, elf);
 	}
     }
 #endif
@@ -584,7 +615,8 @@ static int mips_adjust_got_section(GElf_Shdr *dynamic_shdr,
 				   Elf_Scn *dynamic_scn,
 				   Elf_Scn *got_scn,
 				   Elf_Scn *dynsym_scn,
-				   int adjust)
+				   int adjust,
+				   Elf * elf)
 {
     int i, numdyn, symtabno = 0, gotsym = 0, local_gotno = 0;
     unsigned   *got;
@@ -630,15 +662,23 @@ static int mips_adjust_got_section(GElf_Shdr *dynamic_shdr,
     FAILIF(local_gotno == 0 || symtabno == 0 || gotsym == 0,
 	   "missing DT_MIPS_ entry in .dynamic\n");
 
+    //RT-RK: soslim endian fix
+    assign_func assign = _get_assign(elf);
+    
     got = (unsigned *)got_data->d_buf;
 
     /* Skip reserved entries */
-    i = (got[1] & 0x80000000) ? 2 : 1;
+    //RT-RK: soslim endian fix
+    i = (assign(got[1]) & 0x80000000) ? 2 : 1;
     got += i;
 
     /* relocate local got entries */
     while (i++ < local_gotno)
-	    *got++ += adjust;
+    {
+        //RT-RK: soslim endian fix
+        *got++ = assign(assign(*got) + adjust);
+    }
+            
 
     /* global symbols do not need to be processed */
 
@@ -671,7 +711,7 @@ static GElf_Shdr *find_section_shrd(shdr_info_t *shdr, int num, GElf_Off value, 
     return NULL;
 }
 
-static int mips_adjust_rel32(shdr_info_t *shdr_info, int shnum, Ebl *ebl, Elf_Scn *rel, int adjust)
+static int mips_adjust_rel32(shdr_info_t *shdr_info, int shnum, Ebl *ebl, Elf_Scn *rel, int adjust, Elf * elf)
 {
     GElf_Shdr  rel_shdr;
     size_t     num_rels;
@@ -683,6 +723,9 @@ static int mips_adjust_rel32(shdr_info_t *shdr_info, int shnum, Ebl *ebl, Elf_Sc
     gelf_getshdr(rel, &rel_shdr);
     num_rels =  rel_shdr.sh_size / rel_shdr.sh_entsize;
     INFO("\n\nADJUSTING REL32 (%d) SEGMENTS (ACTUAL 0x%x)\n\n", num_rels, adjust);
+
+    //RT-RK: soslim endian fix
+    assign_func assign = _get_assign(elf);
 
     for (rel_ix = 0; rel_ix < num_rels; rel_ix++) {
 	 GElf_Rel   rel_mem;
@@ -708,7 +751,8 @@ static int mips_adjust_rel32(shdr_info_t *shdr_info, int shnum, Ebl *ebl, Elf_Sc
 	       * try to account for that here
 	       * The assumption is that everything moves by the same relative amount
 	       */
-	      *dest += adjust;
+	      //RT-RK: soslim endian fix
+	      *dest = assign(assign(*dest) + adjust);
 	      num_relocations++;
 	 }
     }
