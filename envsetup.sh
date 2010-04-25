@@ -104,7 +104,7 @@ function setpaths()
     prebuiltdir=$(getprebuilt)
     local arch=$(gettargetarch)
     if [ $arch = "mips" ]; then
-	export ANDROID_EABI_TOOLCHAIN=$prebuiltdir/toolchain/mips-4.3/bin
+	export ANDROID_EABI_TOOLCHAIN=$prebuiltdir/toolchain/mips-4.4.3/bin
 	export ANDROID_TOOLCHAIN=$ANDROID_EABI_TOOLCHAIN
     fi
     if [ $arch = "arm" ]; then
