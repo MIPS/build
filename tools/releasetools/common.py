@@ -35,6 +35,7 @@ OPTIONS.max_image_size = {}
 OPTIONS.verbose = False
 OPTIONS.tempfiles = []
 OPTIONS.device_specific = None
+OPTIONS.extras = {}
 
 class ExternalError(RuntimeError): pass
 
@@ -140,12 +141,15 @@ def AddBoot(output_zip):
   BuildAndAddBootableImage(os.path.join(OPTIONS.input_tmp, "BOOT"),
                            "boot.img", output_zip)
 
-def UnzipTemp(filename):
+def UnzipTemp(filename, pattern=None):
   """Unzip the given archive into a temporary directory and return the name."""
 
   tmp = tempfile.mkdtemp(prefix="targetfiles-")
   OPTIONS.tempfiles.append(tmp)
-  p = Run(["unzip", "-o", "-q", filename, "-d", tmp], stdout=subprocess.PIPE)
+  cmd = ["unzip", "-o", "-q", filename, "-d", tmp]
+  if pattern is not None:
+    cmd.append(pattern)
+  p = Run(cmd, stdout=subprocess.PIPE)
   p.communicate()
   if p.returncode != 0:
     raise ExternalError("failed to unzip input target-files \"%s\"" %
@@ -259,6 +263,10 @@ COMMON_DOCSTRING = """
       Path to the python module containing device-specific
       releasetools code.
 
+  -x  (--extra)  <key=value>
+      Add a key/value pair to the 'extras' dict, which device-specific
+      extension code may look at.
+
   -v  (--verbose)
       Show command lines being executed.
 
@@ -283,8 +291,8 @@ def ParseOptions(argv,
 
   try:
     opts, args = getopt.getopt(
-        argv, "hvp:s:" + extra_opts,
-        ["help", "verbose", "path=", "device_specific="] +
+        argv, "hvp:s:x:" + extra_opts,
+        ["help", "verbose", "path=", "device_specific=", "extra="] +
           list(extra_long_opts))
   except getopt.GetoptError, err:
     Usage(docstring)
@@ -303,6 +311,9 @@ def ParseOptions(argv,
       OPTIONS.search_path = a
     elif o in ("-s", "--device_specific"):
       OPTIONS.device_specific = a
+    elif o in ("-x", "--extra"):
+      key, value = a.split("=", 1)
+      OPTIONS.extras[key] = value
     else:
       if extra_option_handler is None or not extra_option_handler(o, a):
         assert False, "unknown option \"%s\"" % (o,)
@@ -437,6 +448,7 @@ class DeviceSpecificParams(object):
     module."""
     for k, v in kwargs.iteritems():
       setattr(self, k, v)
+    self.extras = OPTIONS.extras
 
     if self.module is None:
       path = OPTIONS.device_specific
