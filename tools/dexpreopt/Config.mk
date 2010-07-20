@@ -143,7 +143,7 @@ ifdef sign_dexpreopt
 	    done
 endif
 	@echo "Dexpreopt system image: $@"
-	$(hide) $(MKYAFFS2) -f $(SYSTEM_DIR) $@
+	$(hide) $(MKYAFFS2) -f $(SYSTEM_DIR) $@ $(if $(TARGET_YAFFS2_BIGENDIAN),convert)
 
 .PHONY: dexpreoptimage
 dexpreoptimage: $(BUILT_DEXPREOPT_SYSTEMIMAGE)
