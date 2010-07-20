@@ -9,7 +9,7 @@
 #include <ctype.h>
 #include <map>
 #include <string>
-#include <utils/ByteOrder.h>
+#include "ByteOrderKcm.h"
 
 using namespace std;
 
