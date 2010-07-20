@@ -787,7 +787,7 @@ else # INTERNAL_USERIMAGES_USE_EXT != true
 define build-systemimage-target
     @echo "Target system fs image: $(1)"
     @mkdir -p $(dir $(1))
-    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_flags) $(TARGET_OUT) $(1)
+    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_flags) $(TARGET_OUT) $(1) $(if $(TARGET_YAFFS2_BIGENDIAN),convert)
 endef
 endif # INTERNAL_USERIMAGES_USE_EXT
 
@@ -905,7 +905,7 @@ else # INTERNAL_USERIMAGES_USE_EXT != true
 define build-userdataimage-target
     $(call pretty,"Target userdata fs image: $(INSTALLED_USERDATAIMAGE_TARGET)")
     @mkdir -p $(TARGET_OUT_DATA)
-    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_flags) $(TARGET_OUT_DATA) $(INSTALLED_USERDATAIMAGE_TARGET)
+    $(hide) $(MKYAFFS2) -f $(mkyaffs2_extra_flags) $(TARGET_OUT_DATA) $(INSTALLED_USERDATAIMAGE_TARGET)  $(if $(TARGET_YAFFS2_BIGENDIAN),convert)
     $(hide) $(call assert-max-image-size,$(INSTALLED_USERDATAIMAGE_TARGET),$(BOARD_USERDATAIMAGE_PARTITION_SIZE),yaffs)
 endef
 endif # INTERNAL_USERIMAGES_USE_EXT
