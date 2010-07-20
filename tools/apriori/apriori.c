@@ -97,7 +97,26 @@ static void print_shdrs(source_t *source) {
 }
 
 #endif /* DEBUG */
-
+typedef unsigned (* assign_func) (unsigned x);
+static unsigned _direct(unsigned x)
+{
+   return x;
+}
+static unsigned _swap(unsigned x)
+{
+    unsigned char * p = (unsigned char *) &x;
+    return (p[0] << 24) | (p[1] << 16) | (p[2] << 8) | p[3];
+}
+static assign_func _get_assign(Elf * elf)
+{
+    GElf_Ehdr ehdr_mem;
+    GElf_Ehdr * ehdr = gelf_getehdr (elf, &ehdr_mem);
+    int target_endian_little = ehdr->e_ident[EI_DATA] == ELFDATA2LSB;
+    int host_endian_little = is_host_little();
+    int same_endian = !target_endian_little == !host_endian_little;
+    assign_func assign = same_endian ? _direct : _swap;
+    return assign;
+}
 static char * find_file(const char *libname,
                         char **lib_lookup_dirs,
                         int num_lib_lookup_dirs);
@@ -983,7 +1002,7 @@ static int do_prelink(source_t *source,
 
     size_t num_rels;
     num_rels = reloc_scn_data->d_size / reloc_scn_entry_size;
-
+    assign_func assign = _get_assign(source->oldelf);
     INFO("\tThere are %d relocations.\n", num_rels);
 
     int rel_idx;
@@ -1400,7 +1419,8 @@ static int do_prelink(source_t *source,
 			     * try to account for that here
 			     * The assumption is that everything moves by the same relative amount
 			     */
-			    *dest += source->base + source->adjust;
+
+                    *dest = assign(assign(*dest) + source->base + source->adjust);
 		    }
 		    num_relocations++;
 		    break;
@@ -1935,7 +1955,7 @@ static int adjust_got_section(source_t *source)
     unsigned *got;
     GElf_Dyn *dyn, dyn_mem;
     size_t dynidx, numdyn;
-
+    assign_func assign = _get_assign(source->oldelf);
     numdyn = source->dynamic.shdr.sh_size /
 	source->dynamic.shdr.sh_entsize;
     for (dynidx = 0; dynidx < numdyn; dynidx++) {
@@ -1964,12 +1984,14 @@ static int adjust_got_section(source_t *source)
     got += i;
 
     /* relocate local got entries */
-    while (i++ < local_gotno)
-	    *got++ += source->base + source->adjust;
+    while (i++ < local_gotno) {
+         *got++ = assign(assign(*got) + source->base + source->adjust);
+    }
 
     i = symtabno - gotsym;
-    while (i--)
-	    *got++ += source->base + source->adjust;
+    while (i--) {
+         *got++ = assign(assign(*got) + source->base + source->adjust);
+    }
 
     return 0;
 }
