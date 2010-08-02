@@ -130,6 +130,13 @@ function setpaths()
     export OPROFILE_EVENTS_DIR=$prebuiltdir/oprofile
 }
 
+function targopreport()
+{
+    prebuiltdir=$(getprebuilt)
+    echo prebuiltdir is $prebuiltdir
+    $prebuiltdir/oprofile/bin/opreport -p $ANDROID_PRODUCT_OUT/symbols/system/bin,$ANDROID_PRODUCT_OUT/symbols/system/lib $*
+}
+
 function printconfig()
 {
     T=$(gettop)
