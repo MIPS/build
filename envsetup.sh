@@ -135,6 +135,23 @@ function setpaths()
     export OPROFILE_EVENTS_DIR=$prebuiltdir/oprofile
 }
 
+function topimport()
+{
+    T=$(gettop)
+    if [ ! "$T" ]; then
+        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
+        return
+    fi
+    $T/external/oprofile/opimport_pull $*
+}
+
+function topreport()
+{
+    prebuiltdir=$(getprebuilt)
+    echo prebuiltdir is $prebuiltdir
+    $prebuiltdir/oprofile/bin/opreport -p $ANDROID_PRODUCT_OUT/symbols/system/bin,$ANDROID_PRODUCT_OUT/symbols/system/lib $*
+}
+
 function printconfig()
 {
     T=$(gettop)
