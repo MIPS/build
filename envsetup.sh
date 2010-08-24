@@ -130,7 +130,17 @@ function setpaths()
     export OPROFILE_EVENTS_DIR=$prebuiltdir/oprofile
 }
 
-function targopreport()
+function topimport()
+{
+    T=$(gettop)
+    if [ ! "$T" ]; then
+        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
+        return
+    fi
+    $T/external/oprofile/opimport_pull $*
+}
+
+function topreport()
 {
     prebuiltdir=$(getprebuilt)
     echo prebuiltdir is $prebuiltdir
