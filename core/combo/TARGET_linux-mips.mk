@@ -72,7 +72,7 @@ android_config_h := $(call select-android-config-h,linux-mips)
 arch_include_dir := $(dir $(android_config_h))
 
 TARGET_GLOBAL_CFLAGS += \
-			-Ulinux \
+			-Ulinux -U__unix -U__unix__ \
 			-fpic \
 			-ffunction-sections \
 			-funwind-tables \
