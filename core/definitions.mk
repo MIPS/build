@@ -767,16 +767,16 @@ $(hide) $(PRIVATE_CXX) \
 	$(foreach incdir, \
 	    $(PRIVATE_C_INCLUDES) \
 	    $(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
-		$(TARGET_PROJECT_INCLUDES) \
-		$(TARGET_C_INCLUDES) \
+		$(PRIVATE_TARGET_PROJECT_INCLUDES) \
+		$(PRIVATE_TARGET_C_INCLUDES) \
 	     ) \
 	  , \
 	    -I $(incdir) \
 	 ) \
 	-c \
 	$(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
-	    $(TARGET_GLOBAL_CFLAGS) \
-	    $(TARGET_GLOBAL_CPPFLAGS) \
+	    $(PRIVATE_TARGET_GLOBAL_CFLAGS) \
+	    $(PRIVATE_TARGET_GLOBAL_CPPFLAGS) \
 	    $(PRIVATE_ARCH_CFLAGS) \
 	 ) \
 	-fno-rtti \
@@ -799,15 +799,15 @@ $(hide) $(PRIVATE_CC) \
 	$(foreach incdir, \
 	    $(PRIVATE_C_INCLUDES) \
 	    $(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
-		$(TARGET_PROJECT_INCLUDES) \
-		$(TARGET_C_INCLUDES) \
+		$(PRIVATE_TARGET_PROJECT_INCLUDES) \
+		$(PRIVATE_TARGET_C_INCLUDES) \
 	     ) \
 	  , \
 	    -I $(incdir) \
 	 ) \
 	-c \
 	$(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
-	    $(TARGET_GLOBAL_CFLAGS) \
+	    $(PRIVATE_TARGET_GLOBAL_CFLAGS) \
 	    $(PRIVATE_ARCH_CFLAGS) \
 	 ) \
 	$(PRIVATE_CFLAGS) \
@@ -1062,12 +1062,12 @@ endef
 ifneq ($(TARGET_CUSTOM_LD_COMMAND),true)
 define transform-o-to-shared-lib-inner
 $(TARGET_CXX) \
-	$(TARGET_GLOBAL_LDFLAGS) \
+	$(PRIVATE_TARGET_GLOBAL_LDFLAGS) \
 	-Wl,-rpath-link=$(TARGET_OUT_INTERMEDIATE_LIBRARIES) \
 	-Wl,-rpath,\$$ORIGIN/../lib \
 	-shared -Wl,-soname,$(notdir $@) \
 	$(PRIVATE_LDFLAGS) \
-	$(TARGET_GLOBAL_LD_DIRS) \
+	$(PRIVATE_TARGET_GLOBAL_LD_DIRS) \
 	$(PRIVATE_ALL_OBJECTS) \
 	-Wl,--whole-archive \
 	$(call normalize-host-libraries,$(PRIVATE_ALL_WHOLE_STATIC_LIBRARIES)) \
@@ -1232,8 +1232,8 @@ $(hide) $(AAPT) package $(PRIVATE_AAPT_FLAGS) -m \
     $(addprefix -G , $(PRIVATE_PROGUARD_OPTIONS_FILE)) \
     $(addprefix --min-sdk-version , $(DEFAULT_APP_TARGET_SDK)) \
     $(addprefix --target-sdk-version , $(DEFAULT_APP_TARGET_SDK)) \
-    $(addprefix --version-code , $(PLATFORM_SDK_VERSION)) \
-    $(addprefix --version-name , $(PLATFORM_VERSION)) \
+    $(if $(filter --version-code,$(PRIVATE_AAPT_FLAGS)),,$(addprefix --version-code , $(PLATFORM_SDK_VERSION))) \
+    $(if $(filter --version-name,$(PRIVATE_AAPT_FLAGS)),,$(addprefix --version-name , $(PLATFORM_VERSION))) \
     $(addprefix --rename-manifest-package , $(PRIVATE_MANIFEST_PACKAGE_NAME)) \
     $(addprefix --rename-instrumentation-target-package , $(PRIVATE_INSTRUMENTATION_FOR_PACKAGE_NAME))
 endef
@@ -1376,8 +1376,8 @@ $(hide) $(AAPT) package -u $(PRIVATE_AAPT_FLAGS) \
     $(addprefix -I , $(PRIVATE_AAPT_INCLUDES)) \
     $(addprefix --min-sdk-version , $(DEFAULT_APP_TARGET_SDK)) \
     $(addprefix --target-sdk-version , $(DEFAULT_APP_TARGET_SDK)) \
-    $(addprefix --version-code , $(PLATFORM_SDK_VERSION)) \
-    $(addprefix --version-name , $(PLATFORM_VERSION)) \
+    $(if $(filter --version-code,$(PRIVATE_AAPT_FLAGS)),,$(addprefix --version-code , $(PLATFORM_SDK_VERSION))) \
+    $(if $(filter --version-name,$(PRIVATE_AAPT_FLAGS)),,$(addprefix --version-name , $(PLATFORM_VERSION))) \
     $(addprefix --rename-manifest-package , $(PRIVATE_MANIFEST_PACKAGE_NAME)) \
     $(addprefix --rename-instrumentation-target-package , $(PRIVATE_INSTRUMENTATION_FOR_PACKAGE_NAME)) \
     -F $@

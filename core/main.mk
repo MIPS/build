@@ -687,13 +687,16 @@ droidcore: files \
 	$(INSTALLED_USERDATAIMAGE_TARGET) \
 	$(INSTALLED_FILES_FILE)
 
+# dist_libraries only for putting your library into the dist directory with a full build.
+.PHONY: dist_libraries
+
 ifneq ($(TARGET_BUILD_APPS),)
   # If this build is just for apps, only build apps and not the full system by default.
 
   unbundled_build_modules :=
   ifneq ($(filter all,$(TARGET_BUILD_APPS)),)
-    # If they used the magic goal "all" then build everything
-    unbundled_build_modules := $(sort $(call get-tagged-modules,$(ALL_MODULE_TAGS)))
+    # If they used the magic goal "all" then build all apps in the source tree.
+    unbundled_build_modules := $(foreach m,$(sort $(ALL_MODULES)),$(if $(filter APPS,$(ALL_MODULES.$(m).CLASS)),$(m)))
   else
     unbundled_build_modules := $(TARGET_BUILD_APPS)
   endif
@@ -734,13 +737,17 @@ else # TARGET_BUILD_APPS
   endif
 
 # Building a full system-- the default is to build droidcore
-droid: droidcore
+droid: droidcore dist_libraries
 
 endif # TARGET_BUILD_APPS
 
 
 .PHONY: droid tests
 tests: droidcore
+
+# phony target that include any targets in $(ALL_MODULES)
+.PHONY: all_modules
+all_modules: $(ALL_MODULES)
 
 .PHONY: docs
 docs: $(ALL_DOCS)
@@ -786,4 +793,3 @@ modules:
 .PHONY: showcommands
 showcommands:
 	@echo >/dev/null
-
