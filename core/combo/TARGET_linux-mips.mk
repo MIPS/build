@@ -57,7 +57,7 @@ TARGET_NO_UNDEFINED_LDFLAGS := -Wl,--no-undefined
 
 TARGET_mips_CFLAGS :=	-O2 \
 			-fomit-frame-pointer \
-			-fstrict-aliasing    \
+			-fno-strict-aliasing    \
 			-funswitch-loops     \
 			-finline-limit=300
 
