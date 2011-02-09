@@ -1,15 +1,16 @@
 # Configuration for Android on MIPS.
-# Generating binaries for MIPS32R2/soft-float/little-endian/dsp
+# Generating binaries for MIPS32R2/hard-float/big-endian/dsp
 
 ARCH_MIPS_HAS_DSP  	:=true
-
+ARCH_HAS_BIGENDIAN	:=true
+TARGET_YAFFS2_BIGENDIAN :=1
 arch_variant_cflags := \
-    -EL \
+    -EB \
     -march=mips32r2 \
     -mtune=mips32r2 \
     -mips32r2 \
-    -msoft-float \
+    -mhard-float \
     -mdsp
 
 arch_variant_ldflags := \
-    -EL
+    -EB
