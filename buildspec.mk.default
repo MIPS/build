@@ -45,13 +45,21 @@ ifndef CUSTOM_MODULES
 #CUSTOM_MODULES:=
 endif
 
-# Uncomment this if you want the simulator, otherwise, build for arm
+# Uncomment this if you want the simulator, otherwise, build for arm/mips
 ifndef TARGET_SIMULATOR
 #TARGET_SIMULATOR:=true
 endif
 
+# Set this to the target architecture
+# supported values are: arm,mips,x86
+ifndef TARGET_ARCH
+#TARGET_ARCH:=arm
+#TARGET_ARCH:=mips
+#TARGET_ARCH:=x86
+endif
+
 # Set this to debug or release if you care.  Otherwise, it defaults to
-# release for arm and debug for the simulator.
+# release for arm/mips and debug for the simulator.
 ifndef TARGET_BUILD_TYPE
 #TARGET_BUILD_TYPE:=release
 #TARGET_BUILD_TYPE:=debug

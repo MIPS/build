@@ -9,6 +9,7 @@ ifneq ($(TARGET_SIMULATOR),true)
 include $(CLEAR_VARS)
 
 LOCAL_LDLIBS += -ldl
+LOCAL_CFLAGS += -DTARGET_ARCH_$(TARGET_ARCH)
 LOCAL_CFLAGS += -O2 -g
 LOCAL_CFLAGS += -fno-function-sections -fno-data-sections -fno-inline
 LOCAL_CFLAGS += -Wall -Wno-unused-function #-Werror
@@ -18,7 +19,10 @@ LOCAL_CFLAGS += -DADJUST_ELF=1
 
 ifeq ($(TARGET_ARCH),arm)
 LOCAL_CFLAGS += -DARM_SPECIFIC_HACKS
-LOCAL_CFLAGS += -DBIG_ENDIAN=1
+endif
+
+ifeq ($(TARGET_ARCH),mips)
+LOCAL_CFLAGS += -DMIPS_SPECIFIC_HACKS
 endif
 
 ifeq ($(HOST_OS),darwin)

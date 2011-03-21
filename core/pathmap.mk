@@ -79,6 +79,7 @@ JNI_H_INCLUDE := $(call include-path-for,libnativehelper)/nativehelper
 FRAMEWORKS_BASE_SUBDIRS := \
 	$(addsuffix /java, \
 	    core \
+	    ethernet \
 	    graphics \
 	    location \
 	    media \

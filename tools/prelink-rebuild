@@ -1,0 +1,118 @@
+#!/usr/bin/perl -w
+
+# Rewrite the prelink map based on library sizes
+# TODO: rewrite in python :o
+
+use strict;
+
+my $top = $ENV{TOP};
+my $arch = $ENV{TARGET_ARCH};
+my $out = $ENV{OUT} || die("Environment variable OUT not defined\n");
+my $prelink = $top."/build/core/prelink-linux-".$arch.".map";
+my $prelinknew = $prelink.".new";
+
+open OLD,"<$prelink" || die("$prelink: $!\n");
+open NEW,">$prelinknew" || die("$prelink: $!\n");
+
+my $limit = 0x7f000000;		# MIPS specific
+
+sub liblines
+{
+  my (@lines) = @_;
+
+  foreach my $l (@lines) {
+    if ($l =~ /(\S+)\s+(0x[0-9A-Fa-f]{8})(.*)$/) {
+      my ($lib, $base, $rest) = ($1, $2, $3);
+      my $libname = $lib;
+      my $size;
+      my $comment;
+      my $rsize;
+
+      $base = hex($base);
+      $libname =~ s/\.so$//;
+      my $libpath = $out."/obj/SHARED_LIBRARIES/".$libname."_intermediates/LINKED/".$lib;
+      # print NEW "# lib:$lib base:$base rest:$rest\n";
+
+      $size = 0xfffff;	# default to 1M
+      $comment = "";
+      if ($rest) {
+	$rest =~ s/^\s*#\s+~?//;
+	# 0xXXXXXX [<1M] comment
+	if ($rest =~ /(0x[0-9A-Fa-f]+) \[.+\]\s*(.*)$/) {
+	  $size = hex($1);
+	  $comment = $2;
+	  # print NEW "comment: $size/$comment\n";
+	}
+	else {
+	  $comment = $rest;
+	}
+      }
+
+      if (-f $libpath) {
+	# print NEW ":$libpath";
+	#my $sizes = `size -d $libpath`;
+	#($size = $sizes) =~ s/.+\n\s*\d+\s+\d+\s+\d+\s+(\d+).+$/$1/;
+	## The size reported by size is a bit optimistic
+	## pad it out a bit here
+	#$size += $size/10;
+
+	$size = 0;
+	open ELF,"readelf -l $libpath|" || die("readelf");
+	while (<ELF>) {
+	  # next unless ($_ =~ /\s*LOAD\s+[0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ ([0-9a-fx]+)[ RWE]+(0-9a-fx])/);
+	  next unless   ($_ =~ /\s*LOAD\s+[0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ ([0-9a-fx]+)[ RWE]+([0-9a-fx])/);
+	  print "# lib line: $_";
+	  my ($lsize,$align) = (hex($1), hex($2));
+	  # $lsize = 0xffff;
+	  # $align = 0x1000;
+	  $size += $lsize;
+	  print ("$libpath: lsize=$lsize align=$align\n");
+	}
+	close ELF;
+      }
+
+      my $tag;
+      if ($size < 0x10000) {
+	$tag = "<64K";
+	$base = ($limit - 0x10000) & 0xffff0000;
+      }
+      elsif ($size < 0x40000) {
+	$tag = "<256K";
+	$base = ($limit - 0x40000) & 0xfffc0000;
+      }
+      elsif ($size < 0x100000) {
+	$tag = "<1M";
+	$base = ($limit - 0x100000) & 0xfff00000;
+      }
+      else {
+	$rsize = (($size + 0xfffff) & 0xfff00000) >> 20;
+	$tag = "~${rsize}M";
+	$base = ($limit - $size) & 0xfff00000; # Don't go above 1M aligment
+      }
+      printf NEW "%-30s 0x%08x # ~0x%08x [%5s]%s\n", $lib, $base, $size, $tag, $comment;
+      $limit = $base;
+    }
+    else {
+      die("failed to parse: $l");
+    }
+  }
+}
+
+my @lines;
+while (my $line = <OLD>) {
+  if ($line =~ /^\s*(#.+)?$/) {
+    if ($#lines >= 0) {
+      liblines(@lines);
+      @lines = ();
+    }
+    print NEW $line;
+    next;
+  }
+  push (@lines,$line);
+}
+if ($#lines) {
+  liblines(@lines);
+}
+
+close OLD;
+close NEW;
