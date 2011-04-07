@@ -84,3 +84,7 @@ ifeq ($(WITH_HOST_DALVIK),true)
         libjavacore-host
 endif
 
+ifeq ($(TARGET_ARCH),mips)
+    PRODUCT_PACKAGES += \
+	libffi
+endif
