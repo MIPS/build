@@ -751,7 +751,7 @@ endef
 
 define transform-cpp-to-o
 @mkdir -p $(dir $@)
-@echo "target $(PRIVATE_ARM_MODE) C++: $(PRIVATE_MODULE) <= $<"
+@echo "target $(PRIVATE_ARCH_MODE) C++: $(PRIVATE_MODULE) <= $<"
 $(hide) $(PRIVATE_CXX) \
 	$(foreach incdir, \
 	    $(PRIVATE_C_INCLUDES) \
@@ -766,7 +766,7 @@ $(hide) $(PRIVATE_CXX) \
 	$(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
 	    $(PRIVATE_TARGET_GLOBAL_CFLAGS) \
 	    $(PRIVATE_TARGET_GLOBAL_CPPFLAGS) \
-	    $(PRIVATE_ARM_CFLAGS) \
+	    $(PRIVATE_ARCH_CFLAGS) \
 	 ) \
 	-fno-rtti \
 	$(PRIVATE_CFLAGS) \
@@ -797,7 +797,7 @@ $(hide) $(PRIVATE_CC) \
 	-c \
 	$(if $(PRIVATE_NO_DEFAULT_COMPILER_FLAGS),, \
 	    $(PRIVATE_TARGET_GLOBAL_CFLAGS) \
-	    $(PRIVATE_ARM_CFLAGS) \
+	    $(PRIVATE_ARCH_CFLAGS) \
 	 ) \
 	$(PRIVATE_CFLAGS) \
 	$(1) \
@@ -806,7 +806,7 @@ $(hide) $(PRIVATE_CC) \
 endef
 
 define transform-c-to-o-no-deps
-@echo "target $(PRIVATE_ARM_MODE) C: $(PRIVATE_MODULE) <= $<"
+@echo "target $(PRIVATE_ARCH_MODE) C: $(PRIVATE_MODULE) <= $<"
 $(call transform-c-or-s-to-o-no-deps, )
 endef
 

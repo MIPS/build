@@ -73,6 +73,11 @@ struct source_t {
     section_info_t dynamic;
     section_info_t hash;
     section_info_t bss;
+#ifdef TARGET_ARCH_mips
+    section_info_t got;
+
+    unsigned adjust;		/* Amount by which .text/.data sections have moved */
+#endif
 
     range_list_t *sorted_sections;
 

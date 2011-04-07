@@ -538,6 +538,16 @@ static bool do_init_source(source_t *source, unsigned base)
                    sname);
             memcpy(&source->bss.shdr, shdr, sizeof(GElf_Shdr));
         }
+#ifdef TARGET_ARCH_mips
+	else if (!strcmp(sname, ".got")) {
+	    source->got.scn = scn;
+	    source->got.data = elf_getdata(scn, NULL);
+	    FAILIF_LIBELF(NULL == source->got.data, elf_getdata);
+	    memcpy(&source->got.shdr, shdr, sizeof(GElf_Shdr));
+	    source->got.info = lookup_shdr_info_by_new_section(
+		    source, sname, scn);
+	}
+#endif
     }
     sort_ranges(source->sorted_sections);
 
@@ -984,6 +994,11 @@ static int do_prelink(source_t *source,
 
         rel = gelf_getrel(reloc_scn_data, rel_idx, &rel_mem);
         FAILIF_LIBELF(rel == NULL, gelf_getrel);
+
+	/* Ignore R_XXX_NONE relocations */
+	if (GELF_R_TYPE(rel->r_info) == 0)
+		continue;
+
         GElf_Sym *sym = NULL, sym_mem;
         unsigned sym_idx = GELF_R_SYM(rel->r_info);
         source_t *sym_source = NULL;
@@ -1198,6 +1213,7 @@ static int do_prelink(source_t *source,
                 source->oldelf, source->shstrndx, shdr_mem.sh_name);
 
             switch (rel_type) {
+#ifdef TARGET_ARCH_arm
             case R_ARM_JUMP_SLOT:
             case R_ARM_GLOB_DAT:
             case R_ARM_ABS32:
@@ -1343,7 +1359,7 @@ static int do_prelink(source_t *source,
                               sizeof(GElf_Rel));
                         }
                         unfinished->rels[unfinished->num_rels++] = *rel;
-                        num_relocations--;
+			num_relocations--;
                         (*num_unfinished_relocs)++;
                       }
                       else {
@@ -1355,7 +1371,7 @@ static int do_prelink(source_t *source,
                             if (!dry_run)
                               memcpy(dest, src, found_sym->st_size);
                           }
-                        else {
+		      else {
                           ASSERT(src == NULL);
                           ASSERT(elf_ndxscn(src_scn) ==
                                  elf_ndxscn(sym_source->bss.scn));
@@ -1367,6 +1383,28 @@ static int do_prelink(source_t *source,
                   num_relocations++;
                 }
               break;
+#endif
+#ifdef TARGET_ARCH_mips
+	    case R_MIPS_REL32:
+		    ASSERT(data->d_buf != NULL);
+		    ASSERT(data->d_size >= rel->r_offset - shdr_mem.sh_addr);
+		    FAILIF(sym != NULL,
+			   "Unsupported REL32 reloc (symbol != 0)...\n");
+		    INFO("[%s:%s]: [0x%llx] = 0x%x + 0x%x\n",
+			 sname,
+			 symname ?: "(symbol has no name)",
+			 rel->r_offset, *dest, source->base);
+		    if (!dry_run) {
+			    ASSERT(sym_idx == 0);
+			    /* Hack alert.. the loadable segment might be moving
+			     * try to account for that here
+			     * The assumption is that everything moves by the same relative amount
+			     */
+			    *dest += source->base + source->adjust;
+		    }
+		    num_relocations++;
+		    break;
+#endif
             default:
               FAILIF(1, "Unknown relocation type %d!\n", rel_type);
             } // switch
@@ -1884,6 +1922,58 @@ static bool adjust_dynamic_segment(source_t *source,
         adjust_dynamic_segment_entries(source);
     return dropped_section;
 }
+
+#ifdef TARGET_ARCH_mips
+/*
+ * FIXME:
+ *  o fix mips_pltgot entries as well?? (none in libc.so...)
+ */
+static int adjust_got_section(source_t *source)
+{
+    int i;
+    int symtabno = 0, gotsym = 0, local_gotno = 0;
+    unsigned *got;
+    GElf_Dyn *dyn, dyn_mem;
+    size_t dynidx, numdyn;
+
+    numdyn = source->dynamic.shdr.sh_size /
+	source->dynamic.shdr.sh_entsize;
+    for (dynidx = 0; dynidx < numdyn; dynidx++) {
+	dyn = gelf_getdyn(source->dynamic.data, dynidx, &dyn_mem);
+	FAILIF_LIBELF(NULL == dyn, gelf_getdyn);
+	switch (dyn->d_tag) {
+	case DT_MIPS_SYMTABNO:
+		symtabno = dyn->d_un.d_val;
+		break;
+	case DT_MIPS_GOTSYM:
+		gotsym = dyn->d_un.d_val;
+		break;
+	case DT_MIPS_LOCAL_GOTNO:
+		local_gotno = dyn->d_un.d_val;
+		break;
+	}
+    }
+
+    FAILIF(local_gotno == 0 || symtabno == 0 || gotsym == 0,
+	   "missing DT_MIPS_ entry in .dynamic\n");
+
+    got = (unsigned *)source->got.data->d_buf;
+
+    /* Skip reserved entries */
+    i = (got[1] & 0x80000000) ? 2 : 1;
+    got += i;
+
+    /* relocate local got entries */
+    while (i++ < local_gotno)
+	    *got++ += source->base + source->adjust;
+
+    i = symtabno - gotsym;
+    while (i--)
+	    *got++ += source->base + source->adjust;
+
+    return 0;
+}
+#endif
 
 static void match_relocation_sections_to_dynamic_ranges(source_t *source)
 {
@@ -2414,6 +2504,17 @@ static source_t* process_file(const char *filename,
                 reinit_source(source);
 
                 INFO("\n\n\tPRELINKING (ACTUAL)\n\n");
+
+#ifdef TARGET_ARCH_mips
+		/* Hack alert
+		 * The text/data segment load address may have changed
+		 * REL32 and GOT relocation need to know if this is the case
+		 * Try to account for it here
+		 */
+		source->adjust = source->got.info->shdr.sh_offset - source->got.info->old_shdr.sh_offset;
+		INFO("\n\n\tMIPS adjustment is 0x%08x\n", source->adjust);
+#endif
+
 #ifdef DEBUG
                 int old_num_unfinished_relocs = num_unfinished_relocs;
 #endif
@@ -2495,6 +2596,11 @@ static source_t* process_file(const char *filename,
 
             INFO("\n\n\tADJUSTING DYNAMIC SEGMENT (ACTUAL)\n\n");
             adjust_dynamic_segment(source, false);
+
+#ifdef TARGET_ARCH_mips
+	    INFO("\n\n\tADJUSTING GOT SEGMENT (ACTUAL)\n\n");
+	    adjust_got_section(source);
+#endif
         }
 #ifdef SUPPORT_ANDROID_PRELINK_TAGS
         else INFO("[%s] is already prelinked at 0x%08lx.\n",

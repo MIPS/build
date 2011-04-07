@@ -3,7 +3,9 @@
 #include <debug.h>
 #include <libelf.h>
 #include <libebl.h>
+#ifdef TARGET_ARCH_arm
 #include <libebl_arm.h>
+#endif
 #include <elf.h>
 #include <gelf.h>
 #include <string.h>
@@ -19,10 +21,18 @@
 
 #include <elfcopy.h>
 
+
+#ifdef MIPS_SPECIFIC_HACKS
+static int mips_adjust_got_section(GElf_Shdr *, Elf_Scn *, Elf_Scn *, Elf_Scn *, int);
+
+static int mips_adjust_rel32(shdr_info_t *, int, Ebl *, Elf_Scn *, int);
+#endif
+
+
 void clone_elf(Elf *elf, Elf *newelf,
                const char *elf_name,
                const char *newelf_name,
-               bool *sym_filter, int num_symbols,
+	       bool *sym_filter, size_t num_symbols,
                int shady
 #ifdef SUPPORT_ANDROID_PRELINK_TAGS
                , int *prelinked,
@@ -42,6 +52,10 @@ void clone_elf(Elf *elf, Elf *newelf,
     int dynsym_idx = -1; /* index in shdr_info[] of dynamic symbol table
                             section */
 
+#ifdef MIPS_SPECIFIC_HACKS
+    int got_idx = -1; /* index in shdr_info[] of .got section */
+#endif
+ 
     unsigned int cnt;	  /* general-purpose counter */
     /* This flag is true when at least one section is dropped or when the
        relative order of sections has changed, so that section indices in
@@ -169,7 +183,14 @@ void clone_elf(Elf *elf, Elf *newelf,
                  cnt);
             dynsym_idx = cnt;
         }
-
+#ifdef MIPS_SPECIFIC_HACKS
+	else if (!strncmp(".got", shdr_info[cnt].name, 4)) {
+	    INFO("\t\tthis is the SHT_GOT section [%s] at index %d\n",
+		 shdr_info[cnt].name,
+		 cnt);
+	    got_idx = cnt;
+	}
+#endif
 		FAILIF(shdr_info[cnt].shdr.sh_type == SHT_SYMTAB_SHNDX,
 			   "Cannot handle sh_type SHT_SYMTAB_SHNDX!\n");
 		FAILIF(shdr_info[cnt].shdr.sh_type == SHT_GROUP,
@@ -184,8 +205,10 @@ void clone_elf(Elf *elf, Elf *newelf,
 	/* Get the EBL handling. */
 	Ebl *ebl = ebl_openbackend (elf);
 	FAILIF_LIBELF(NULL == ebl, ebl_openbackend);
+#ifdef ARM_SPECIFIC_HACKS
     FAILIF_LIBELF(0 != arm_init(elf, ehdr->e_machine, ebl, sizeof(Ebl)),
                   arm_init);
+#endif
 
     if (strip_debug) {
 
@@ -213,6 +236,10 @@ void clone_elf(Elf *elf, Elf *newelf,
 							 1	 /* remove all debug sections */) ||
             /* The macro above is broken--check for .comment explicitly */
             !strcmp(".comment", shdr_info[cnt].name)
+#ifdef MIPS_SPECIFIC_HACKS
+	    ||
+	    !strncmp(".debug", shdr_info[cnt].name, 6)
+#endif
 #ifdef ARM_SPECIFIC_HACKS
             ||
             /* We ignore this section, that's why we can remove it. */
@@ -493,6 +520,26 @@ void clone_elf(Elf *elf, Elf *newelf,
                ehdr->e_type == ET_DYN, /* adjust section ofsets only when the file is a shared library */
                rebuild_shstrtab);
 
+#ifdef MIPS_SPECIFIC_HACKS
+    if (dynamic_idx >= 0 && got_idx >= 0) {
+	size_t adjust, base = 0;
+
+	adjust = base + (shdr_info[got_idx].shdr.sh_offset - shdr_info[got_idx].old_shdr.sh_offset);
+	if (adjust != 0) {
+		for (cnt = 1; cnt < shnum; cnt++) {
+			if (shdr_info[cnt].shdr.sh_type == SHT_REL) {
+				mips_adjust_rel32(shdr_info, shnum, ebl, shdr_info[cnt].scn, adjust);
+			}
+		}
+		mips_adjust_got_section(&shdr_info[dynamic_idx].shdr,
+					shdr_info[dynamic_idx].scn,
+					shdr_info[got_idx].scn,
+					shdr_info[dynsym_idx].scn,
+					adjust);
+	}
+    }
+#endif
+
     /* We have everything from the old file. */
 	FAILIF_LIBELF(elf_cntl(elf, ELF_C_FDDONE) != 0, elf_cntl);
 
@@ -526,3 +573,147 @@ void clone_elf(Elf *elf, Elf *newelf,
     if (shstrtab_data != NULL)
         FREEIF(shstrtab_data->d_buf);
 }
+
+
+#ifdef MIPS_SPECIFIC_HACKS
+
+/*
+ * FIXME:
+ *  o fix mips_pltgot entries as well?? (none in libc.so...)
+ */
+static int mips_adjust_got_section(GElf_Shdr *dynamic_shdr,
+				   Elf_Scn *dynamic_scn,
+				   Elf_Scn *got_scn,
+				   Elf_Scn *dynsym_scn,
+				   int adjust)
+{
+    int i, numdyn, symtabno = 0, gotsym = 0, local_gotno = 0;
+    unsigned   *got;
+    Elf_Data    *dynamic_data = elf_getdata(dynamic_scn, NULL);
+    Elf_Data    *got_data = elf_getdata(got_scn, NULL);
+    GElf_Sym    *symtab = (GElf_Sym *) elf_getdata(dynsym_scn, NULL);
+
+    FAILIF_LIBELF(NULL == dynamic_data, elf_getdata);
+    FAILIF_LIBELF(NULL == got_data, elf_getdata);
+    FAILIF_LIBELF(NULL == symtab, elf_getdata);
+
+    numdyn = dynamic_shdr->sh_size / dynamic_shdr->sh_entsize;
+    INFO("\n\nADJUSTING GOT (%d) SEGMENT (ACTUAL 0x%x)\n\n", numdyn, adjust);
+
+    for (i = 0; i < numdyn; i++) {
+	GElf_Dyn   *dyn, dyn_mem;
+	dyn = gelf_getdyn(dynamic_data,
+			  i,
+			  &dyn_mem);
+	FAILIF_LIBELF(NULL == dyn, gelf_getdyn);
+	switch (dyn->d_tag) {
+	case DT_SYMTAB:
+	case DT_MIPS_SYMTABNO:
+		symtabno = dyn->d_un.d_val;
+		break;
+	case DT_MIPS_GOTSYM:
+		gotsym = dyn->d_un.d_val;
+		break;
+	case DT_MIPS_LOCAL_GOTNO:
+		local_gotno = dyn->d_un.d_val;
+		break;
+	case DT_MIPS_RLD_MAP:
+		ERROR("mips_adjust_got_section: unhandled d_tag DT_MIPS_RLD_MAP\n");
+		break;
+#if	0
+	case DT_MIPS_PLT_GOT:
+		ERROR("mips_adjust_got_section: unhandled d_tag DT_MIPS_PLT_GOT\n");
+		break;
+#endif
+	}
+    }
+
+    FAILIF(local_gotno == 0 || symtabno == 0 || gotsym == 0,
+	   "missing DT_MIPS_ entry in .dynamic\n");
+
+    got = (unsigned *)got_data->d_buf;
+
+    /* Skip reserved entries */
+    i = (got[1] & 0x80000000) ? 2 : 1;
+    got += i;
+
+    /* relocate local got entries */
+    while (i++ < local_gotno)
+	    *got++ += adjust;
+
+    /* global symbols do not need to be processed */
+
+#if	0
+    /* Now do the global GOT entries */
+    for (i = gotsym; i < symtabno; i++) {
+       *got = symtab[i].st_value + adjust;
+       ++got;
+    }
+#endif
+
+    INFO("\tMIPS section .got (adjust=%d) (symtabno=%d) (local=%d) (gotsym=%d)\n", adjust, symtabno, local_gotno, gotsym);
+    return 0;
+}
+
+/*
+ * return the section header corresponding to offset
+ */
+static GElf_Shdr *find_section_shrd(shdr_info_t *shdr, int num, GElf_Off value, Elf_Data **data)
+{
+    int  i;
+    for (i = 1; i < num; i++) {
+	 GElf_Off addr = shdr[i].shdr.sh_addr;
+	 GElf_Off size = shdr[i].shdr.sh_size;
+	 if (addr <= value && value < (addr + size)) {
+	      *data = elf_getdata(shdr[i].scn, NULL);
+	      return &shdr[i].shdr;
+	 }
+    }
+    return NULL;
+}
+
+static int mips_adjust_rel32(shdr_info_t *shdr_info, int shnum, Ebl *ebl, Elf_Scn *rel, int adjust)
+{
+    GElf_Shdr  rel_shdr;
+    size_t     num_rels;
+    size_t     rel_ix;
+    int        num_relocations = 0;
+    char       buf[128];
+    Elf_Data  *rel_data =     elf_getdata(rel, NULL);
+
+    gelf_getshdr(rel, &rel_shdr);
+    num_rels =  rel_shdr.sh_size / rel_shdr.sh_entsize;
+    INFO("\n\nADJUSTING REL32 (%d) SEGMENTS (ACTUAL 0x%x)\n\n", num_rels, adjust);
+
+    for (rel_ix = 0; rel_ix < num_rels; rel_ix++) {
+	 GElf_Rel   rel_mem;
+
+	 gelf_getrel(rel_data, rel_ix, &rel_mem);
+
+	 if ((GELF_R_TYPE(rel_mem.r_info) == R_MIPS_REL32) &&
+	     (GELF_R_SYM(rel_mem.r_info) == 0)) {
+	      unsigned  *dest;
+	      size_t     symidx;
+	      Elf_Data  *sect_data;
+	      GElf_Shdr *shdr = find_section_shrd(shdr_info, shnum, rel_mem.r_offset, &sect_data);
+	      ASSERT(shdr);
+	      dest =  (unsigned *)(((char *)sect_data->d_buf) +
+				  (rel_mem.r_offset - shdr->sh_addr));
+
+	      symidx = GELF_R_SYM(rel_mem.r_info);
+	      INFO("\t\t%-15s [%d] offset 0x%llx , adjustment= %d\n",
+		   ebl_reloc_type_name(ebl, GELF_R_TYPE(rel_mem.r_info), buf, sizeof(buf)),
+		   symidx, rel_mem.r_offset, adjust);
+
+	      /* Hack alert.. the loadable segment might be moving
+	       * try to account for that here
+	       * The assumption is that everything moves by the same relative amount
+	       */
+	      *dest += adjust;
+	      num_relocations++;
+	 }
+    }
+    return num_relocations;
+}
+
+#endif
