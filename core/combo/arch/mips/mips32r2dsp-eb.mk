@@ -2,6 +2,7 @@
 # Generating binaries for MIPS32R2/soft-float/big-endian/dsp
 
 ARCH_MIPS_HAS_DSP  	:=true
+ARCH_MIPS_DSP_REV	:=1
 ARCH_HAS_BIGENDIAN	:=true
 TARGET_YAFFS2_BIGENDIAN :=1
 arch_variant_cflags := \
