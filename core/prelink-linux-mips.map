@@ -24,12 +24,12 @@ libsysutils.so                 0x7e7f0000 # ~0x00008fa2 [ <64K]
 libffi.so                      0x7e7e0000 # ~0x000046e1 [ <64K]
 
 # bluetooth
-liba2dp.so                     0x7e600000 # ~0x000fffff [  <1M]
-audio.so                       0x7e500000 # ~0x000fffff [  <1M]
-input.so                       0x7e400000 # ~0x000fffff [  <1M]
-libhcid.so                     0x7e300000 # ~0x000fffff [  <1M]
+liba2dp.so                     0x7e600000 # ~0x00014778 [<256K]
+audio.so                       0x7e500000 # ~0x00037760 [<256K]
+input.so                       0x7e400000 # ~0x00007a30 [ <64K]
+libbluetoothd.so               0x7e300000 # ~0x000d22f8 [  <1M]
 libbluedroid.so                0x7e200000 # ~0x000fffff [  <1M]
-libbluetooth.so                0x7e100000 # ~0x000fffff [  <1M]
+libbluetooth.so                0x7e100000 # ~0x0001a7ec [<256K]
 libdbus.so                     0x7e000000 # ~0x000aa800 [  <1M]
 
 # extended system libraries
