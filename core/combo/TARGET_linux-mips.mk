@@ -18,7 +18,7 @@
 # Included by combo/select.mk
 
 # You can set TARGET_ARCH_VARIANT to use an arch version other
-# than mips32r2. Each value should correspond to a file named
+# than mips32r2-fp. Each value should correspond to a file named
 # $(BUILD_COMBOS)/arch/<name>.mk which must contain
 # makefile variable definitions similar to the preprocessor
 # defines in system/core/include/arch/<combo>/AndroidConfig.h. Their
@@ -31,7 +31,7 @@
 # version.
 #
 ifeq ($(strip $(TARGET_ARCH_VARIANT)),)
-TARGET_ARCH_VARIANT := mips32r2
+TARGET_ARCH_VARIANT := mips32r2-fp
 endif
 
 TARGET_ARCH_SPECIFIC_MAKEFILE := $(BUILD_COMBOS)/arch/$(TARGET_ARCH)/$(TARGET_ARCH_VARIANT).mk
