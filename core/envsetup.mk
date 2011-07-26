@@ -288,7 +288,7 @@ else
 		ABP:=$(ABP):$(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/arm-eabi-4.2.1/bin
 	endif
 	ifeq ($(TARGET_ARCH),mips)
-		ABP:=$(ABP):$(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-4.4.3/bin
+		ABP:=$(ABP):$(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-4.4.6/bin
 	endif
 
 endif
