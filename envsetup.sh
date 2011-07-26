@@ -151,6 +151,27 @@ function setpaths()
     #export HOST_EXTRACFLAGS="-I "$T/system/kernel_headers/host_include
 }
 
+function topimport()
+{
+    T=$(gettop)
+    if [ ! "$T" ]; then
+        echo "Couldn't locate the top of the tree.  Try setting TOP." >&2
+        return
+    fi
+    $T/external/oprofile/opimport_pull $*
+}
+
+function topreport()
+{
+    if [ ! "$OPROFILE_EVENTS_DIR" ]; then
+        echo "OPROFILE_EVENTS_DIR not set. Run \"setpaths\" first"
+	return
+    fi
+    oprofile_bin_dir=${OPROFILE_BIN_DIR:-$OPROFILE_EVENTS_DIR}
+    echo $oprofile_bin_dir/opreport -p $ANDROID_PRODUCT_OUT/symbols/system/bin,$ANDROID_PRODUCT_OUT/symbols/system/lib,`echo $ANDROID_PRODUCT_OUT/symbols/system/lib/*/ | sed -e 's/ /,/'` $*
+}
+
+
 function printconfig()
 {
     T=$(gettop)
