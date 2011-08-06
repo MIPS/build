@@ -2,6 +2,7 @@
 # Generating binaries for MIPS32R2/hard-float/little-endian/dsp
 
 ARCH_MIPS_HAS_DSP  	:=true
+ARCH_MIPS_HAS_FPU       :=true
 
 arch_variant_cflags := \
     -EL \
