@@ -55,7 +55,7 @@ TARGET_LD := $(TARGET_TOOLS_PREFIX)ld$(HOST_EXECUTABLE_SUFFIX)
 
 TARGET_NO_UNDEFINED_LDFLAGS := -Wl,--no-undefined
 
-TARGET_mips_CFLAGS :=	-O2 \
+TARGET_mips_base_CFLAGS := \
 			-fomit-frame-pointer \
 			-fno-strict-aliasing    \
 			-funswitch-loops     \
@@ -65,7 +65,15 @@ TARGET_mips_CFLAGS :=	-O2 \
 # or in your environment to gdb debugging easier.
 # Don't forget to do a clean build.
 ifeq ($(FORCE_MIPS_DEBUGGING),true)
-  TARGET_mips_CFLAGS += -fno-omit-frame-pointer
+  TARGET_mips_base_CFLAGS += -fno-omit-frame-pointer
+endif
+
+# Set ARCH_MIPS_HAS_MIPS16 to "true" which will cause the
+# size optimization flag to be used instead.
+ifeq ($(ARCH_MIPS_HAS_MIPS16),true)
+TARGET_mips16_CFLAGS := -Os -fno-gcse -mips16 -minterlink-mips16 $(TARGET_mips_base_CFLAGS)
+else
+TARGET_mips_CFLAGS := -O2 -g -fgcse-after-reload $(TARGET_mips_base_CFLAGS)
 endif
 
 android_config_h := $(call select-android-config-h,linux-mips)
@@ -96,7 +104,6 @@ TARGET_RELEASE_CFLAGS := \
 			-Wstrict-aliasing=2 \
 			-finline-functions \
 			-fno-inline-functions-called-once \
-			-fgcse-after-reload \
 			-frerun-cse-after-loop \
 			-frename-registers
 

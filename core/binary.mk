@@ -99,11 +99,20 @@ endif
 endif
 
 ifeq ($(TARGET_ARCH),mips)
-# We don't distinguish between arch/normal builds at the moment
-# Everything is built using mips flags
+###########################################################
+## Define mips-vs-XXXX-mode flags.
+###########################################################
 LOCAL_ARCH_MODE := $(strip $(LOCAL_MIPS_MODE))
 arch_objects_mode := $(if $(LOCAL_ARCH_MODE),$(LOCAL_ARCH_MODE),mips)
+ifeq ($(ARCH_MIPS_HAS_MIPS16),true)
+normal_objects_mode := $(if $(LOCAL_ARCH_MODE),$(LOCAL_ARCH_MODE),mips16)
+else
+ifeq ($(ARCH_MIPS_HAS_MICROMIPS),true)
+normal_objects_mode := $(if $(LOCAL_ARCH_MODE),$(LOCAL_ARCH_MODE),micromips)
+else
 normal_objects_mode := $(if $(LOCAL_ARCH_MODE),$(LOCAL_ARCH_MODE),mips)
+endif
+endif
 
 # Read the values from TARGET_mips_CFLAGS
 # HOST_mips_CFLAGS values aren't actually used (although they are usually empty).
@@ -197,15 +206,7 @@ endif
 ## C++: Compile .cpp files to .o.
 ###########################################################
 
-# we also do this on host modules and sim builds, even though
-# it's not really (mips|arm), because there are files that are shared.
-ifeq ($(TARGET_ARCH),arm)
-cpp_arch_sources    := $(patsubst %$(LOCAL_CPP_EXTENSION).$(TARGET_ARCH),%$(LOCAL_CPP_EXTENSION),$(filter %$(LOCAL_CPP_EXTENSION).$(TARGET_ARCH),$(LOCAL_SRC_FILES)))
-else
-# This is a hack to avoid modifying all of the Android.mk
-# files that user the .arm trick to modify the build flags
-cpp_arch_sources    := $(patsubst %$(LOCAL_CPP_EXTENSION).arm,%$(LOCAL_CPP_EXTENSION),$(filter %$(LOCAL_CPP_EXTENSION).arm,$(LOCAL_SRC_FILES)))
-endif
+cpp_arch_sources    := $(patsubst %$(LOCAL_CPP_EXTENSION).arch,%$(LOCAL_CPP_EXTENSION),$(filter %$(LOCAL_CPP_EXTENSION).arch,$(LOCAL_SRC_FILES)))
 cpp_arch_objects    := $(addprefix $(intermediates)/,$(cpp_arch_sources:$(LOCAL_CPP_EXTENSION)=.o))
 
 cpp_normal_sources := $(filter %$(LOCAL_CPP_EXTENSION),$(LOCAL_SRC_FILES))
@@ -271,13 +272,7 @@ gen_asm_objects := $(gen_S_objects) $(gen_s_objects)
 ## C: Compile .c files to .o.
 ###########################################################
 
-ifeq ($(TARGET_ARCH),arm)
-c_arch_sources    := $(patsubst %.c.$(TARGET_ARCH),%.c,$(filter %.c.$(TARGET_ARCH),$(LOCAL_SRC_FILES)))
-else
-# This is a hack to avoid modifying all of the Android.mk
-# files that user the .arm trick to modify the build flags
-c_arch_sources    := $(patsubst %.c.arm,%.c,$(filter %.c.arm,$(LOCAL_SRC_FILES)))
-endif
+c_arch_sources    := $(patsubst %.c.arch,%.c,$(filter %.c.arch,$(LOCAL_SRC_FILES)))
 c_arch_objects    := $(addprefix $(intermediates)/,$(c_arch_sources:.c=.o))
 
 c_normal_sources := $(filter %.c,$(LOCAL_SRC_FILES))
