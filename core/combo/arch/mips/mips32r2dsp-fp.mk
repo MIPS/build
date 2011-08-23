@@ -3,7 +3,7 @@
 
 ARCH_MIPS_HAS_DSP  	:=true
 ARCH_MIPS_DSP_REV	:=1
-
+ARCH_MIPS_HAS_FPU       :=true
 arch_variant_cflags := \
     -EL \
     -march=mips32r2 \

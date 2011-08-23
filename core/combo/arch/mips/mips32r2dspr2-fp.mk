@@ -3,6 +3,7 @@
 
 ARCH_MIPS_HAS_DSP  	:=true
 ARCH_MIPS_DSP_REV	:=2
+ARCH_MIPS_HAS_FPU       :=true
 
 arch_variant_cflags := \
     -EL \

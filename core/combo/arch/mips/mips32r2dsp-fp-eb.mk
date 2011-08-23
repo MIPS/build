@@ -1,6 +1,6 @@
 # Configuration for Android on MIPS.
 # Generating binaries for MIPS32R2/hard-float/big-endian/dsp
-
+ARCH_MIPS_HAS_FPU       :=true
 ARCH_MIPS_HAS_DSP  	:=true
 ARCH_MIPS_DSP_REV	:=1
 ARCH_HAS_BIGENDIAN	:=true
