@@ -11,10 +11,16 @@ my $out = $ENV{OUT} || die("Environment variable OUT not defined\n");
 my $prelink = $top."/build/core/prelink-linux-".$arch.".map";
 my $prelinknew = $prelink.".new";
 
+# This option does not allow the shrinkage of the allocated segment for
+# a library which reduced in size. This is very useful when dealing with
+# multiple configurations - where different libraries increase in size.
+# Otherwise, the changes from old runs would be overwritten by the subsequent runs
+my $prevent_shrinkage = 1;
+
 open OLD,"<$prelink" || die("$prelink: $!\n");
 open NEW,">$prelinknew" || die("$prelink: $!\n");
 
-my $limit = 0x7f000000;		# MIPS specific
+my $limit = 0x7f000000;   # MIPS specific
 
 sub liblines
 {
@@ -27,69 +33,84 @@ sub liblines
       my $size;
       my $comment;
       my $rsize;
+      my $oldsize;
 
       $base = hex($base);
       $libname =~ s/\.so$//;
       my $libpath = $out."/obj/SHARED_LIBRARIES/".$libname."_intermediates/LINKED/".$lib;
       # print NEW "# lib:$lib base:$base rest:$rest\n";
 
-      $size = 0xfffff;	# default to 1M
+      $size = 0xfffff;  # default to 1M
       $comment = "";
       if ($rest) {
-	$rest =~ s/^\s*#\s+~?//;
-	# 0xXXXXXX [<1M] comment
-	if ($rest =~ /(0x[0-9A-Fa-f]+) \[.+\]\s*(.*)$/) {
-	  $size = hex($1);
-	  $comment = $2;
-	  # print NEW "comment: $size/$comment\n";
-	}
-	else {
-	  $comment = $rest;
-	}
+        $rest =~ s/^\s*#\s+~?//;
+        # 0xXXXXXX [<1M] comment
+        if ($rest =~ /(0x[0-9A-Fa-f]+)?\[.*[\< \~](.+)\]\s*(.*)$/) {
+          $rsize = $2;
+          $comment = $3;
+          # print NEW "comment : $rsize/$comment \n";
+        }
+        else {
+          $comment = $rest;
+        }
       }
+      if ($rsize =~ /(.*)K/) {
+        $size = $1 * 1024;
+      }
+      elsif ($rsize =~ /(.*)M/) {
+        $size = $1 * 1024 * 1024;
+      }
+      $oldsize = $size;
 
       if (-f $libpath) {
-	# print NEW ":$libpath";
-	#my $sizes = `size -d $libpath`;
-	#($size = $sizes) =~ s/.+\n\s*\d+\s+\d+\s+\d+\s+(\d+).+$/$1/;
-	## The size reported by size is a bit optimistic
-	## pad it out a bit here
-	#$size += $size/10;
+        # print NEW ":$libpath";
+        #my $sizes = `size -d $libpath`;
+        #($size = $sizes) =~ s/.+\n\s*\d+\s+\d+\s+\d+\s+(\d+).+$/$1/;
+        ## The size reported by size is a bit optimistic
+        ## pad it out a bit here
+        #$size += $size/10;
 
-	$size = 0;
-	open ELF,"readelf -l $libpath|" || die("readelf");
-	while (<ELF>) {
-	  # next unless ($_ =~ /\s*LOAD\s+[0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ ([0-9a-fx]+)[ RWE]+(0-9a-fx])/);
-	  next unless   ($_ =~ /\s*LOAD\s+[0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ ([0-9a-fx]+)[ RWE]+([0-9a-fx])/);
-	  print "# lib line: $_";
-	  my ($lsize,$align) = (hex($1), hex($2));
-	  # $lsize = 0xffff;
-	  # $align = 0x1000;
-	  $size += $lsize;
-	  print ("$libpath: lsize=$lsize align=$align\n");
-	}
-	close ELF;
+        $size = 0;
+        open ELF,"readelf -l $libpath|" || die("readelf");
+        while (<ELF>) {
+          # next unless ($_ =~ /\s*LOAD\s+[0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ ([0-9a-fx]+)[ RWE]+(0-9a-fx])/);
+          next unless   ($_ =~ /\s*LOAD\s+[0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ [0-9a-fx]+ ([0-9a-fx]+)[ RWE]+([0-9a-fx])/);
+          print "# lib line: $_";
+          my ($lsize,$align) = (hex($1), hex($2));
+          # $lsize = 0xffff;
+          # $align = 0x1000;
+          $size += $lsize;
+          print ("$libpath: lsize=$lsize align=$align\n");
+        }
+        # Increase the size of the prelink map by 10% to match apriori as it only removes
+        # debug sections from the total file size to calculate the prelink size.
+        $size = 1.1 * $size;
+        close ELF;
       }
 
+      if ($prevent_shrinkage and $size < $oldsize) {
+        $size = $oldsize;
+      }
+      print "size = $size \n";
       my $tag;
-      if ($size < 0x10000) {
-	$tag = "<64K";
-	$base = ($limit - 0x10000) & 0xffff0000;
+      if ($size <= 0x10000) {
+        $tag = "<64K";
+        $base = ($limit - 0x10000) & 0xffff0000;
       }
-      elsif ($size < 0x40000) {
-	$tag = "<256K";
-	$base = ($limit - 0x40000) & 0xfffc0000;
+      elsif ($size <= 0x40000) {
+        $tag = "<256K";
+        $base = ($limit - 0x40000) & 0xfffc0000;
       }
-      elsif ($size < 0x100000) {
-	$tag = "<1M";
-	$base = ($limit - 0x100000) & 0xfff00000;
+      elsif ($size <= 0x100000) {
+        $tag = "<1M";
+        $base = ($limit - 0x100000) & 0xfff00000;
       }
       else {
-	$rsize = (($size + 0xfffff) & 0xfff00000) >> 20;
-	$tag = "~${rsize}M";
-	$base = ($limit - $size) & 0xfff00000; # Don't go above 1M aligment
+        $rsize = (($size + 0xfffff) & 0xfff00000) >> 20;
+        $tag = "~${rsize}M";
+        $base = ($limit - $size) & 0xfff00000; # Don't go above 1M aligment
       }
-      printf NEW "%-30s 0x%08x # ~0x%08x [%5s]%s\n", $lib, $base, $size, $tag, $comment;
+      printf NEW "%-30s 0x%08x # [%5s]%s\n", $lib, $base, $tag, $comment;
       $limit = $base;
     }
     else {
