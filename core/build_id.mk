@@ -18,5 +18,5 @@
 # (like "CRB01").  It must be a single word, and is
 # capitalized by convention.
 
-export MIPS_BUILD_ID=M8
+export MIPS_BUILD_ID=M9
 export BUILD_ID=FRG83-$(MIPS_BUILD_ID)
