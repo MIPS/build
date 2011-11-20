@@ -80,7 +80,9 @@ TARGET_SHELL := ash
 # Enable dex-preoptimization to speed up the first boot sequence
 # of an SDK AVD. Note that this operation only works on Linux for now
 ifeq ($(HOST_OS),linux)
-WITH_DEXPREOPT := true
+  ifeq ($(WITH_DEXPREOPT),)
+    WITH_DEXPREOPT := true
+  endif
 endif
 
 # Build OpenGLES emulation guest and host libraries
