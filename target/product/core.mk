@@ -107,3 +107,9 @@ ifeq ($(WITH_HOST_DALVIK),true)
         core-hostdex \
         dalvik
 endif
+
+# FIXME: used by slow path JNI bridge in Dalvik
+ifeq ($(TARGET_ARCH),mips)
+    PRODUCT_PACKAGES += \
+	libffi
+endif
