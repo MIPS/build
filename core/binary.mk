@@ -196,24 +196,35 @@ else
 $(LOCAL_BUILT_MODULE): PRIVATE_GROUP_STATIC_LIBRARIES :=
 endif
 
+# Default values for arch/normal builds
+# Targets may override these on a directory/file basis
+arch_objects_mode :=
+normal_objects_mode :=
+arch_objects_cflags :=
+normal_objects_cflags :=
+
+ifeq ($(TARGET_ARCH),arm)
 ###########################################################
 ## Define arm-vs-thumb-mode flags.
 ###########################################################
-LOCAL_ARM_MODE := $(strip $(LOCAL_ARM_MODE))
-ifeq ($(TARGET_ARCH),arm)
-arm_objects_mode := $(if $(LOCAL_ARM_MODE),$(LOCAL_ARM_MODE),arm)
-normal_objects_mode := $(if $(LOCAL_ARM_MODE),$(LOCAL_ARM_MODE),thumb)
-
 # Read the values from something like TARGET_arm_CFLAGS or
 # TARGET_thumb_CFLAGS.  HOST_(arm|thumb)_CFLAGS values aren't
 # actually used (although they are usually empty).
-arm_objects_cflags := $($(my_prefix)$(arm_objects_mode)_CFLAGS)
+arch_objects_cflags := $($(my_prefix)$(arch_objects_mode)_CFLAGS)
 normal_objects_cflags := $($(my_prefix)$(normal_objects_mode)_CFLAGS)
-else
-arm_objects_mode :=
-normal_objects_mode :=
-arm_objects_cflags :=
-normal_objects_cflags :=
+endif
+
+ifeq ($(TARGET_ARCH),mips)
+# We don't distinguish between arch/normal builds at the moment
+# Everything is built using mips flags unless specifically overridden by LOCAL_MIPS_MODE
+LOCAL_ARCH_MODE := $(strip $(LOCAL_MIPS_MODE))
+arch_objects_mode := $(if $(LOCAL_ARCH_MODE),$(LOCAL_ARCH_MODE),mips)
+normal_objects_mode := $(if $(LOCAL_ARCH_MODE),$(LOCAL_ARCH_MODE),mips)
+
+# Read the values from TARGET_mips_CFLAGS
+# HOST_mips_CFLAGS values aren't actually used (although they are usually empty).
+arch_objects_cflags := $($(my_prefix)$(arch_objects_mode)_CFLAGS)
+normal_objects_cflags := $($(my_prefix)$(normal_objects_mode)_CFLAGS)
 endif
 
 ###########################################################
@@ -259,8 +270,8 @@ $(proto_generated_cc_sources): $(proto_generated_cc_sources_dir)/%.pb.cc: %.prot
 proto_generated_headers := $(patsubst %.pb.cc,%.pb.h, $(proto_generated_cc_sources))
 $(proto_generated_headers): $(proto_generated_cc_sources_dir)/%.pb.h: $(proto_generated_cc_sources_dir)/%.pb.cc
 
-$(proto_generated_cc_sources): PRIVATE_ARM_MODE := $(normal_objects_mode)
-$(proto_generated_cc_sources): PRIVATE_ARM_CFLAGS := $(normal_objects_cflags)
+$(proto_generated_cc_sources): PRIVATE_ARCH_MODE := $(normal_objects_mode)
+$(proto_generated_cc_sources): PRIVATE_ARCH_CFLAGS := $(normal_objects_cflags)
 $(proto_generated_objects): $(proto_generated_cc_sources_dir)/%.o: $(proto_generated_cc_sources_dir)/%.cc
 	$(transform-$(PRIVATE_HOST)cpp-to-o)
 -include $(proto_generated_objects:%.o=%.P)
@@ -292,8 +303,8 @@ $(yacc_cpps): $(intermediates)/%$(LOCAL_CPP_EXTENSION): \
 	$(call transform-y-to-cpp,$(PRIVATE_CPP_EXTENSION))
 $(yacc_headers): $(intermediates)/%.h: $(intermediates)/%$(LOCAL_CPP_EXTENSION)
 
-$(yacc_objects): PRIVATE_ARM_MODE := $(normal_objects_mode)
-$(yacc_objects): PRIVATE_ARM_CFLAGS := $(normal_objects_cflags)
+$(yacc_objects): PRIVATE_ARCH_MODE := $(normal_objects_mode)
+$(yacc_objects): PRIVATE_ARCH_CFLAGS := $(normal_objects_cflags)
 $(yacc_objects): $(intermediates)/%.o: $(intermediates)/%$(LOCAL_CPP_EXTENSION)
 	$(transform-$(PRIVATE_HOST)cpp-to-o)
 endif
@@ -312,8 +323,8 @@ $(lex_cpps): $(intermediates)/%$(LOCAL_CPP_EXTENSION): \
 		$(TOPDIR)$(LOCAL_PATH)/%.l
 	$(transform-l-to-cpp)
 
-$(lex_objects): PRIVATE_ARM_MODE := $(normal_objects_mode)
-$(lex_objects): PRIVATE_ARM_CFLAGS := $(normal_objects_cflags)
+$(lex_objects): PRIVATE_ARCH_MODE := $(normal_objects_mode)
+$(lex_objects): PRIVATE_ARCH_CFLAGS := $(normal_objects_cflags)
 $(lex_objects): $(intermediates)/%.o: \
 		$(intermediates)/%$(LOCAL_CPP_EXTENSION) \
 		$(LOCAL_ADDITIONAL_DEPENDENCIES) \
@@ -326,19 +337,24 @@ endif
 ###########################################################
 
 # we also do this on host modules, even though
-# it's not really arm, because there are files that are shared.
-cpp_arm_sources    := $(patsubst %$(LOCAL_CPP_EXTENSION).arm,%$(LOCAL_CPP_EXTENSION),$(filter %$(LOCAL_CPP_EXTENSION).arm,$(LOCAL_SRC_FILES)))
-cpp_arm_objects    := $(addprefix $(intermediates)/,$(cpp_arm_sources:$(LOCAL_CPP_EXTENSION)=.o))
+# it's not really target dependent, because there are files that are shared.
+
+ifeq ($(TARGET_ARCH),arm)
+cpp_arch_sources    := $(patsubst %$(LOCAL_CPP_EXTENSION).$(TARGET_ARCH),%$(LOCAL_CPP_EXTENSION),$(filter %$(LOCAL_CPP_EXTENSION).$(TARGET_ARCH),$(LOCAL_SRC_FILES)))
+else
+cpp_arch_sources    := $(patsubst %$(LOCAL_CPP_EXTENSION).arm,%$(LOCAL_CPP_EXTENSION),$(filter %$(LOCAL_CPP_EXTENSION).arm,$(LOCAL_SRC_FILES)))
+endif
+cpp_arch_objects    := $(addprefix $(intermediates)/,$(cpp_arch_sources:$(LOCAL_CPP_EXTENSION)=.o))
 
 cpp_normal_sources := $(filter %$(LOCAL_CPP_EXTENSION),$(LOCAL_SRC_FILES))
 cpp_normal_objects := $(addprefix $(intermediates)/,$(cpp_normal_sources:$(LOCAL_CPP_EXTENSION)=.o))
 
-$(cpp_arm_objects):    PRIVATE_ARM_MODE := $(arm_objects_mode)
-$(cpp_arm_objects):    PRIVATE_ARM_CFLAGS := $(arm_objects_cflags)
-$(cpp_normal_objects): PRIVATE_ARM_MODE := $(normal_objects_mode)
-$(cpp_normal_objects): PRIVATE_ARM_CFLAGS := $(normal_objects_cflags)
+$(cpp_arch_objects):   PRIVATE_ARCH_MODE := $(arch_objects_mode)
+$(cpp_arch_objects):   PRIVATE_ARCH_CFLAGS := $(arch_objects_cflags)
+$(cpp_normal_objects): PRIVATE_ARCH_MODE := $(normal_objects_mode)
+$(cpp_normal_objects): PRIVATE_ARCH_CFLAGS := $(normal_objects_cflags)
 
-cpp_objects        := $(cpp_arm_objects) $(cpp_normal_objects)
+cpp_objects        := $(cpp_arch_objects) $(cpp_normal_objects)
 
 ifneq ($(strip $(cpp_objects)),)
 $(cpp_objects): $(intermediates)/%.o: \
@@ -357,9 +373,9 @@ gen_cpp_objects := $(gen_cpp_sources:%$(LOCAL_CPP_EXTENSION)=%.o)
 
 ifneq ($(strip $(gen_cpp_objects)),)
 # Compile all generated files as thumb.
-# TODO: support compiling certain generated files as arm.
-$(gen_cpp_objects): PRIVATE_ARM_MODE := $(normal_objects_mode)
-$(gen_cpp_objects): PRIVATE_ARM_CFLAGS := $(normal_objects_cflags)
+# TODO: support compiling certain generated files as mips|arm.
+$(gen_cpp_objects): PRIVATE_ARCH_MODE := $(normal_objects_mode)
+$(gen_cpp_objects): PRIVATE_ARCH_CFLAGS := $(normal_objects_cflags)
 $(gen_cpp_objects): $(intermediates)/%.o: $(intermediates)/%$(LOCAL_CPP_EXTENSION) $(yacc_cpps) $(proto_generated_headers) $(LOCAL_ADDITIONAL_DEPENDENCIES)
 	$(transform-$(PRIVATE_HOST)cpp-to-o)
 -include $(gen_cpp_objects:%.o=%.P)
@@ -393,18 +409,24 @@ gen_asm_objects := $(gen_S_objects) $(gen_s_objects)
 ## C: Compile .c files to .o.
 ###########################################################
 
-c_arm_sources    := $(patsubst %.c.arm,%.c,$(filter %.c.arm,$(LOCAL_SRC_FILES)))
-c_arm_objects    := $(addprefix $(intermediates)/,$(c_arm_sources:.c=.o))
+ifeq ($(TARGET_ARCH),arm)
+c_arch_sources    := $(patsubst %.c.$(TARGET_ARCH),%.c,$(filter %.c.$(TARGET_ARCH),$(LOCAL_SRC_FILES)))
+else
+# This is a hack to avoid modifying all of the Android.mk
+# files that user the .arm trick to modify the build flags
+c_arch_sources    := $(patsubst %.c.arm,%.c,$(filter %.c.arm,$(LOCAL_SRC_FILES)))
+endif
+c_arch_objects    := $(addprefix $(intermediates)/,$(c_arch_sources:.c=.o))
 
 c_normal_sources := $(filter %.c,$(LOCAL_SRC_FILES))
 c_normal_objects := $(addprefix $(intermediates)/,$(c_normal_sources:.c=.o))
 
-$(c_arm_objects):    PRIVATE_ARM_MODE := $(arm_objects_mode)
-$(c_arm_objects):    PRIVATE_ARM_CFLAGS := $(arm_objects_cflags)
-$(c_normal_objects): PRIVATE_ARM_MODE := $(normal_objects_mode)
-$(c_normal_objects): PRIVATE_ARM_CFLAGS := $(normal_objects_cflags)
+$(c_arch_objects):   PRIVATE_ARCH_MODE := $(arch_objects_mode)
+$(c_arch_objects):   PRIVATE_ARCH_CFLAGS := $(arch_objects_cflags)
+$(c_normal_objects): PRIVATE_ARCH_MODE := $(normal_objects_mode)
+$(c_normal_objects): PRIVATE_ARCH_CFLAGS := $(normal_objects_cflags)
 
-c_objects        := $(c_arm_objects) $(c_normal_objects)
+c_objects        := $(c_arch_objects) $(c_normal_objects)
 
 ifneq ($(strip $(c_objects)),)
 $(c_objects): $(intermediates)/%.o: $(TOPDIR)$(LOCAL_PATH)/%.c $(yacc_cpps) $(proto_generated_headers) $(LOCAL_ADDITIONAL_DEPENDENCIES)
@@ -422,8 +444,8 @@ gen_c_objects := $(gen_c_sources:%.c=%.o)
 ifneq ($(strip $(gen_c_objects)),)
 # Compile all generated files as thumb.
 # TODO: support compiling certain generated files as arm.
-$(gen_c_objects): PRIVATE_ARM_MODE := $(normal_objects_mode)
-$(gen_c_objects): PRIVATE_ARM_CFLAGS := $(normal_objects_cflags)
+$(gen_c_objects): PRIVATE_ARCH_MODE := $(normal_objects_mode)
+$(gen_c_objects): PRIVATE_ARCH_CFLAGS := $(normal_objects_cflags)
 $(gen_c_objects): $(intermediates)/%.o: $(intermediates)/%.c $(yacc_cpps) $(proto_generated_headers) $(LOCAL_ADDITIONAL_DEPENDENCIES)
 	$(transform-$(PRIVATE_HOST)c-to-o)
 -include $(gen_c_objects:%.o=%.P)

@@ -113,22 +113,41 @@ function setpaths()
     CODE_REVIEWS=
     prebuiltdir=$(getprebuilt)
 
-    # The gcc toolchain does not exists for windows/cygwin. In this case, do not reference it.
-    export ANDROID_EABI_TOOLCHAIN=
-    toolchaindir=toolchain/arm-linux-androideabi-4.4.x/bin
-    if [ -d "$prebuiltdir/$toolchaindir" ]; then
-        export ANDROID_EABI_TOOLCHAIN=$prebuiltdir/$toolchaindir
-    fi
+    local arch=$(gettargetarch)
+    if [ $arch = "arm" ]; then
+        # The gcc toolchain does not exists for windows/cygwin. In this case, do not reference it.
+        export ANDROID_EABI_TOOLCHAIN=
+        toolchaindir=toolchain/arm-linux-androideabi-4.4.x/bin
+        if [ -d "$prebuiltdir/$toolchaindir" ]; then
+	    export ANDROID_EABI_TOOLCHAIN=$prebuiltdir/$toolchaindir
+	fi
 
-    export ARM_EABI_TOOLCHAIN=
-    toolchaindir=toolchain/arm-eabi-4.4.3/bin
-    if [ -d "$prebuiltdir/$toolchaindir" ]; then
-        export ARM_EABI_TOOLCHAIN=$prebuiltdir/$toolchaindir
+        export ARM_EABI_TOOLCHAIN=
+        toolchaindir=toolchain/arm-eabi-4.4.3/bin
+	if [ -d "$prebuiltdir/$toolchaindir" ]; then
+	    export ARM_EABI_TOOLCHAIN=$prebuiltdir/$toolchaindir
+	fi
+	export ARCH_EABI_TOOLCHAIN=$ARM_EABI_TOOLCHAIN
+    fi
+    if [ $arch = "mips" ]; then
+        # The gcc toolchain does not exists for windows/cygwin. In this case, do not reference it.
+        export ANDROID_EABI_TOOLCHAIN=
+        toolchaindir=toolchain/mips-4.4.6/bin
+        if [ -d "$prebuiltdir/$toolchaindir" ]; then
+	    export ANDROID_EABI_TOOLCHAIN=$prebuiltdir/$toolchaindir
+	fi
+
+        export MIPS_EABI_TOOLCHAIN=
+        toolchaindir=toolchain/mips-4.4.6/bin
+	if [ -d "$prebuiltdir/$toolchaindir" ]; then
+	    export MIPS_EABI_TOOLCHAIN=$prebuiltdir/$toolchaindir
+	fi
+	export ARCH_EABI_TOOLCHAIN=$MIPS_EABI_TOOLCHAIN
     fi
 
     export ANDROID_TOOLCHAIN=$ANDROID_EABI_TOOLCHAIN
     export ANDROID_QTOOLS=$T/development/emulator/qtools
-    export ANDROID_BUILD_PATHS=:$(get_build_var ANDROID_BUILD_PATHS):$ANDROID_QTOOLS:$ANDROID_TOOLCHAIN:$ARM_EABI_TOOLCHAIN$CODE_REVIEWS
+    export ANDROID_BUILD_PATHS=:$(get_build_var ANDROID_BUILD_PATHS):$ANDROID_QTOOLS:$ANDROID_TOOLCHAIN:$ARCH_EABI_TOOLCHAIN:$CODE_REVIEWS
     export PATH=$PATH$ANDROID_BUILD_PATHS
 
     unset ANDROID_JAVA_TOOLCHAIN
@@ -200,13 +219,14 @@ function set_sequence_number()
 function settitle()
 {
     if [ "$STAY_OFF_MY_LAWN" = "" ]; then
+        local arch=$(gettargetarch)
         local product=$TARGET_PRODUCT
         local variant=$TARGET_BUILD_VARIANT
         local apps=$TARGET_BUILD_APPS
         if [ -z "$apps" ]; then
-            export PROMPT_COMMAND="echo -ne \"\033]0;[${product}-${variant}] ${USER}@${HOSTNAME}: ${PWD}\007\""
+            export PROMPT_COMMAND="echo -ne \"\033]0;[${arch}-${product}-${variant}] ${USER}@${HOSTNAME}: ${PWD}\007\""
         else
-            export PROMPT_COMMAND="echo -ne \"\033]0;[$apps $variant] ${USER}@${HOSTNAME}: ${PWD}\007\""
+            export PROMPT_COMMAND="echo -ne \"\033]0;[$arch $apps $variant] ${USER}@${HOSTNAME}: ${PWD}\007\""
         fi
     fi
 }
@@ -413,6 +433,7 @@ function add_lunch_combo()
 add_lunch_combo full-eng
 add_lunch_combo full_x86-eng
 add_lunch_combo vbox_x86-eng
+add_lunch_combo full_mips-eng
 
 function print_lunch_menu()
 {
@@ -725,6 +746,8 @@ function gdbclient()
    local OUT_SO_SYMBOLS=$(get_abs_build_var TARGET_OUT_SHARED_LIBRARIES_UNSTRIPPED)
    local OUT_EXE_SYMBOLS=$(get_abs_build_var TARGET_OUT_EXECUTABLES_UNSTRIPPED)
    local PREBUILTS=$(get_abs_build_var ANDROID_PREBUILTS)
+   local ARCH=$(gettargetarch)
+   local BUILD_PATHS=$(get_build_var ANDROID_BUILD_PATHS)
    if [ "$OUT_ROOT" -a "$PREBUILTS" ]; then
        local EXE="$1"
        if [ "$EXE" ] ; then
@@ -765,8 +788,14 @@ function gdbclient()
        echo >>"$OUT_ROOT/gdbclient.cmds" "target remote $PORT"
        echo >>"$OUT_ROOT/gdbclient.cmds" ""
 
-       arm-linux-androideabi-gdb -x "$OUT_ROOT/gdbclient.cmds" "$OUT_EXE_SYMBOLS/$EXE"
-  else
+       if [ $ARCH = "mips" ]; then
+           gdb=mips-linux-gnu-gdb
+       fi
+       if [ $ARCH = "arm" ]; then
+           gdb=arm-linux-androideabi-gdb
+       fi
+       $gdb -x "$OUT_ROOT/gdbclient.cmds" "$OUT_EXE_SYMBOLS/$EXE"
+   else
        echo "Unable to determine build system output dir."
    fi
 
@@ -787,6 +816,11 @@ case `uname -s` in
         }
         ;;
 esac
+
+function gettargetarch
+{
+    get_build_var TARGET_ARCH
+}
 
 function jgrep()
 {
@@ -843,7 +877,8 @@ function tracedmdump()
         return
     fi
     local prebuiltdir=$(getprebuilt)
-    local KERNEL=$T/prebuilt/android-arm/kernel/vmlinux-qemu
+    local arch=$(gettargetarch)
+    local KERNEL=$T/prebuilt/android-$arch/kernel/vmlinux-qemu
 
     local TRACE=$1
     if [ ! "$TRACE" ] ; then
