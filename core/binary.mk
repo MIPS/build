@@ -210,6 +210,13 @@ ifeq ($(TARGET_ARCH),arm)
 # Read the values from something like TARGET_arm_CFLAGS or
 # TARGET_thumb_CFLAGS.  HOST_(arm|thumb)_CFLAGS values aren't
 # actually used (although they are usually empty).
+LOCAL_ARCH_MODE := $(strip $(LOCAL_ARM_MODE))
+arch_objects_mode := $(if $(LOCAL_ARM_MODE),$(LOCAL_ARM_MODE),arm)
+normal_objects_mode := $(if $(LOCAL_ARM_MODE),$(LOCAL_ARM_MODE),thumb)
+
+# Read the values from something like TARGET_arm_CFLAGS or
+# TARGET_thumb_CFLAGS.  HOST_(arm|thumb)_CFLAGS values aren't
+# actually used (although they are usually empty).
 arch_objects_cflags := $($(my_prefix)$(arch_objects_mode)_CFLAGS)
 normal_objects_cflags := $($(my_prefix)$(normal_objects_mode)_CFLAGS)
 endif
@@ -221,8 +228,9 @@ LOCAL_ARCH_MODE := $(strip $(LOCAL_MIPS_MODE))
 arch_objects_mode := $(if $(LOCAL_ARCH_MODE),$(LOCAL_ARCH_MODE),mips)
 normal_objects_mode := $(if $(LOCAL_ARCH_MODE),$(LOCAL_ARCH_MODE),mips)
 
-# Read the values from TARGET_mips_CFLAGS
-# HOST_mips_CFLAGS values aren't actually used (although they are usually empty).
+# Read the values from something like TARGET_mips_CFLAGS or
+# TARGET_mips16_CFLAGS.  HOST_(mips|mips16)_CFLAGS values aren't
+# actually used (although they are usually empty).
 arch_objects_cflags := $($(my_prefix)$(arch_objects_mode)_CFLAGS)
 normal_objects_cflags := $($(my_prefix)$(normal_objects_mode)_CFLAGS)
 endif
