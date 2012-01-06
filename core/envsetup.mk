@@ -118,11 +118,8 @@ endif
 # 		TARGET_OS = { linux }
 # 		TARGET_ARCH = { arm | x86 | mips}
 
-
-ifeq ($(TARGET_ARCH),)
-+$(error TARGET_ARCH undefined)
-endif
 TARGET_OS := linux
+# TARGET_ARCH should be set by BoardConfig.mk and will be checked later
 
 # the target build type defaults to release
 ifneq ($(TARGET_BUILD_TYPE),debug)
