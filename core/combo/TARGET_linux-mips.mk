@@ -140,8 +140,11 @@ ifneq ($(wildcard $(TARGET_CC)),)
 # any flags which affect libgcc are correctly taken
 # into account.
 TARGET_LIBGCC := \
-	$(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) -print-file-name=libgcc.a) \
-	$(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) -print-file-name=libgcc_eh.a)
+  $(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) -print-file-name=libgcc.a)
+LIBGCC_EH := $(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) -print-file-name=libgcc_eh.a)
+ifneq ($(LIBGCC_EH),libgcc_eh.a)
+  TARGET_LIBGCC += $(LIBGCC_EH)
+endif
 endif
 
 # Define FDO (Feedback Directed Optimization) options.
