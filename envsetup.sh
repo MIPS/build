@@ -132,13 +132,13 @@ function setpaths()
     if [ $arch = "mips" ]; then
         # The gcc toolchain does not exists for windows/cygwin. In this case, do not reference it.
         export ANDROID_EABI_TOOLCHAIN=
-        toolchaindir=toolchain/mips-4.4.6/bin
+        toolchaindir=toolchain/mips-linux-android-4.5.2/bin
         if [ -d "$prebuiltdir/$toolchaindir" ]; then
 	    export ANDROID_EABI_TOOLCHAIN=$prebuiltdir/$toolchaindir
 	fi
 
         export MIPS_EABI_TOOLCHAIN=
-        toolchaindir=toolchain/mips-4.4.6/bin
+        toolchaindir=toolchain/mips-linux-android-4.5.2/bin
 	if [ -d "$prebuiltdir/$toolchaindir" ]; then
 	    export MIPS_EABI_TOOLCHAIN=$prebuiltdir/$toolchaindir
 	fi

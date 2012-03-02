@@ -15,7 +15,7 @@ endif
 ifeq ($(TARGET_ARCH),mips)
   ifneq ($(wildcard $(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-linux-gnu-4.4.6/bin),)
     # this should be copied to HOST_OUT_EXECUTABLES instead
-    ABP:=$(ABP):$(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-4.4.6/bin
+    ABP:=$(ABP):$(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-linux-android-4.5.2/bin
   endif
 endif
 ANDROID_BUILD_PATHS := $(ABP)
