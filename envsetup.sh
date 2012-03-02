@@ -789,7 +789,7 @@ function gdbclient()
        echo >>"$OUT_ROOT/gdbclient.cmds" ""
 
        if [ $ARCH = "mips" ]; then
-           gdb=mips-linux-gnu-gdb
+           gdb=mips-linux-android-gdb
        fi
        if [ $ARCH = "arm" ]; then
            gdb=arm-linux-androideabi-gdb

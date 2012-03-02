@@ -13,7 +13,7 @@ ifeq ($(TARGET_ARCH),arm)
   endif
 endif
 ifeq ($(TARGET_ARCH),mips)
-  ifneq ($(wildcard $(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-linux-gnu-4.4.6/bin),)
+  ifneq ($(wildcard $(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-linux-android-4.5.2/bin),)
     # this should be copied to HOST_OUT_EXECUTABLES instead
     ABP:=$(ABP):$(PWD)/prebuilt/$(HOST_PREBUILT_TAG)/toolchain/mips-linux-android-4.5.2/bin
   endif
