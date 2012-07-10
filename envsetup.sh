@@ -139,6 +139,8 @@ function setpaths()
             ;;
         arm) toolchaindir=arm/arm-eabi-4.6/bin
             ;;
+	mips) toolchaidir=
+	    ;;
         *)
             echo "Can't find toolchain for unknown architecture: $ARCH"
             toolchaindir=xxxxxxxxx
