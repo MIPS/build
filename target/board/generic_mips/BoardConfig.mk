@@ -26,7 +26,7 @@ TARGET_ARCH := mips
 ifeq (,$(TARGET_ARCH_VARIANT))
 TARGET_ARCH_VARIANT := mips32r2-fp
 endif
-GET_CPU_ABI  := mips
+TARGET_CPU_ABI  := mips
 
 HAVE_HTC_AUDIO_DRIVER := true
 BOARD_USES_GENERIC_AUDIO := true
