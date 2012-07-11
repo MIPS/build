@@ -43,8 +43,8 @@ include $(TARGET_ARCH_SPECIFIC_MAKEFILE)
 
 # You can set TARGET_TOOLS_PREFIX to get gcc from somewhere else
 ifeq ($(strip $(TARGET_TOOLS_PREFIX)),)
-TARGET_TOOLS_PREFIX := \
-        prebuilts/gcc/$(HOST_PREBUILT_TAG)/mips/mipsel-linux-android-4.6/bin/mipsel-linux-android-
+TARGET_TOOLCHAIN_ROOT := prebuilts/gcc/$(HOST_PREBUILT_TAG)/mips/mipsel-linux-android-4.6
+TARGET_TOOLS_PREFIX := $(TARGET_TOOLCHAIN_ROOT)/bin/mipsel-linux-android-
 endif
 
 # Only define these if there's actually a gcc in there.
@@ -155,7 +155,7 @@ TARGET_FDO_CFLAGS:=
 TARGET_FDO_LIB:=
 
 target_libgcov := $(shell $(TARGET_CC) $(TARGET_GLOBAL_CFLAGS) \
-        -print-file-name=libgcov.a)
+        --print-file-name=libgcov.a)
 ifneq ($(strip $(BUILD_FDO_INSTRUMENT)),)
   # Set BUILD_FDO_INSTRUMENT=true to turn on FDO instrumentation.
   # The profile will be generated on /data/local/tmp/profile on the device.
