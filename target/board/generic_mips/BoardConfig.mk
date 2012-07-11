@@ -21,8 +21,8 @@
 # The generic product target doesn't have any hardware-specific pieces.
 TARGET_NO_BOOTLOADER := true
 TARGET_NO_KERNEL := true
-
 TARGET_ARCH := mips
+
 ifeq (,$(TARGET_ARCH_VARIANT))
 TARGET_ARCH_VARIANT := mips32r2-fp
 endif
