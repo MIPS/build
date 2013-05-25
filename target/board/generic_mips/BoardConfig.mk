@@ -28,6 +28,10 @@ TARGET_ARCH_VARIANT := mips32r2-fp
 endif
 TARGET_CPU_ABI  := mips
 
+# Enable Play Store to show & install all native Arm apps
+#  for running on MIPS via MagicCode emulator
+TARGET_CPU_ABI2 := armeabi-v7a
+
 HAVE_HTC_AUDIO_DRIVER := true
 BOARD_USES_GENERIC_AUDIO := true
 
