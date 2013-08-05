@@ -65,7 +65,9 @@ ifeq ($(TARGET_ARCH),mips)
     -march=mips32 \
     -mtune=mips32 \
     -msynci \
-    -mno-fused-madd
+    -mno-fused-madd \
+    -mdsp \
+    -mdspr2
 endif
 ifeq ($(TARGET_ARCH),x86)
   RS_TRIPLE := i686-unknown-linux
