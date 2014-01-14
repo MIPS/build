@@ -116,6 +116,14 @@ TARGET_GLOBAL_CFLAGS += -Wno-psabi
 
 ifneq ($(ARCH_MIPS_PAGE_SHIFT),)
 TARGET_GLOBAL_CFLAGS += -DPAGE_SHIFT=$(ARCH_MIPS_PAGE_SHIFT)
+# If page size is greater than 4K, set the max-page-size and
+# common-page-size to be 64K. This will allow the linker to
+# align the data section and other writable sections accordingly.
+ifneq ($(ARCH_MIPS_PAGE_SHIFT),12)
+TARGET_GLOBAL_LDFLAGS += \
+			-Wl,-zmax-page-size=0x10000 \
+			-Wl,-zcommon-page-size=0x10000
+endif
 endif
 
 TARGET_GLOBAL_LDFLAGS += \
