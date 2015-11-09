@@ -2,5 +2,7 @@
 # system.prop for generic mips64 sdk
 #
 
+ro.kernel.android.bootanim = 0
+
 rild.libpath=/system/lib/libreference-ril.so
 rild.libargs=-d /dev/ttyS0
