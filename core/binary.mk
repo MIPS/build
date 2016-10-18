@@ -87,6 +87,8 @@ ifdef LOCAL_SDK_VERSION
     my_ndk_sysroot_lib := $(my_ndk_sysroot)/usr/lib64
   else ifeq (mips32r6,$(TARGET_$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH_VARIANT))
     my_ndk_sysroot_lib := $(my_ndk_sysroot)/usr/libr6
+  else ifeq (mips32r6msa,$(TARGET_$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH_VARIANT))
+    my_ndk_sysroot_lib := $(my_ndk_sysroot)/usr/libr6
   else
     my_ndk_sysroot_lib := $(my_ndk_sysroot)/usr/lib
   endif
@@ -113,6 +115,8 @@ ifdef LOCAL_SDK_VERSION
   my_ndk_stl_cppflags :=
   my_cpu_variant := $(TARGET_$(LOCAL_2ND_ARCH_VAR_PREFIX)CPU_ABI)
   ifeq (mips32r6,$(TARGET_$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH_VARIANT))
+    my_cpu_variant := mips32r6
+  else ifeq (mips32r6msa,$(TARGET_$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH_VARIANT))
     my_cpu_variant := mips32r6
   endif
   LOCAL_NDK_STL_VARIANT := $(strip $(LOCAL_NDK_STL_VARIANT))
