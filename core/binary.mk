@@ -90,17 +90,6 @@ ifneq ($(LOCAL_SDK_VERSION),)
   # Make sure we've built the NDK.
   my_additional_dependencies += $(SOONG_OUT_DIR)/ndk.timestamp
 
-  # mips32r6 is not supported by the NDK. No released NDK contains these
-  # libraries, but the r10 in prebuilts/ndk had a local hack to add them :(
-  #
-  # We need to find a real solution to this problem, but until we do just drop
-  # mips32r6 things back to r10 to get the tree building again.
-  ifeq (mips32r6,$(TARGET_$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH_VARIANT))
-    ifeq ($(LOCAL_NDK_VERSION), current)
-      LOCAL_NDK_VERSION := r10
-    endif
-  endif
-
   my_arch := $(TARGET_$(LOCAL_2ND_ARCH_VAR_PREFIX)ARCH)
   ifneq (,$(filter arm64 mips64 x86_64,$(my_arch)))
     my_min_sdk_version := 21
