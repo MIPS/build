@@ -7,7 +7,7 @@ ARCH_HAVE_ALIGNED_DOUBLES :=true
 arch_variant_cflags := \
     -mips32r2 \
     -mfp32 \
-    -modd-spreg \
+    -mno-odd-spreg \
     -mno-fused-madd \
     -Wa,-mmxu \
     -mno-synci
