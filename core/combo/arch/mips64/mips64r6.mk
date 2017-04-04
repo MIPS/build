@@ -1,7 +1,9 @@
-# Configuration for Android on mips64r6.
+# Configuration for Android on mips64r6 + MSA.
 
 ARCH_MIPS_REV6 := true
+ARCH_MIPS_HAS_MSA := true
 arch_variant_cflags := \
     -mips64r6 \
+    -mmsa \
+    -mfp64 \
     -msynci
-
