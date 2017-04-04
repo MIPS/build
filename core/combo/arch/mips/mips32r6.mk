@@ -1,9 +1,11 @@
-# Configuration for Android on MIPS.
-# Generating binaries for MIPS32R6/hard-float/little-endian
+# Configuration for Android on mips32r6 + MSA.
+# Generating binaries for MIPS32R6MSA/hard-float/little-endian
 
 ARCH_MIPS_REV6 := true
+ARCH_MIPS_HAS_MSA := true
 arch_variant_cflags := \
     -mips32r6 \
+    -mmsa \
     -mfp64 \
     -mno-odd-spreg \
     -msynci
