@@ -81,6 +81,11 @@ PRODUCT_PACKAGES += \
     android.hardware.power@1.0-service \
     android.hardware.power@1.0-impl
 
+PRODUCT_PACKAGES += \
+    android.hardware.graphics.allocator@2.0-impl \
+    android.hardware.graphics.allocator@2.0-service \
+    android.hardware.graphics.mapper@2.0-impl \
+
 # camera service treble disable until all backwards compat is complete
 PRODUCT_PROPERTY_OVERRIDES += \
     camera.disable_treble=1
