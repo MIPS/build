@@ -2,3 +2,4 @@
 # Generating binaries for MIPS32R6/hard-float/little-endian
 
 ARCH_MIPS_REV6 := true
+ARCH_MIPS_HAS_MSA := true
