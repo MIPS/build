@@ -1,2 +1,0 @@
-#============= hal_gnss_default ==============
-vndbinder_use(hal_gnss_default)
