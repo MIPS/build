@@ -22,9 +22,16 @@ PRODUCT_PROPERTY_OVERRIDES += \
 # see copy file rules in core/Makefile
 PRODUCT_COPY_FILES += \
     development/sys-img/advancedFeatures.ini.arm:advancedFeatures.ini \
-    prebuilts/qemu-kernel/mips/3.18/kernel-qemu2:kernel-ranchu \
     device/generic/goldfish/fstab.ranchu.mips:root/fstab.ranchu \
     device/generic/goldfish/fstab.ranchu.early.arm:root/fstab.ranchu.early
+
+ifeq ($(filter mips32r5 mips32r6,$(TARGET_ARCH_VARIANT)),)
+PRODUCT_COPY_FILES += \
+    prebuilts/qemu-kernel/mips/ranchu/kernel-qemu:kernel-ranchu
+else
+PRODUCT_COPY_FILES += \
+    prebuilts/qemu-kernel/mips/ranchu/kernel-qemu-$(TARGET_ARCH_VARIANT):kernel-ranchu
+endif
 
 include $(SRC_TARGET_DIR)/product/full_mips.mk
 
