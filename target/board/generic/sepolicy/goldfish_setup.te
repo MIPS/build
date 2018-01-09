@@ -4,7 +4,19 @@ type goldfish_setup_exec, vendor_file_type, exec_type, file_type;
 
 init_daemon_domain(goldfish_setup)
 
+# Set debug.sf.nobootanimation
 set_prop(goldfish_setup, debug_prop);
+
+# Set net.eth0.dns*
+set_prop(goldfish_setup, system_prop)
+
+# Set ro.radio.noril
+set_prop(goldfish_setup, radio_noril_prop)
+
+# Stop ril-daemon service (by setting ctl.stop to ril-daemon, which
+# transforms to a permission check on ctl.ril-daemon).
+set_prop(goldfish_setup, ctl_rildaemon_prop)
+
 allow goldfish_setup self:capability { net_admin net_raw };
 allow goldfish_setup self:udp_socket { create ioctl };
 allow goldfish_setup vendor_toolbox_exec:file execute_no_trans;
