@@ -1063,7 +1063,7 @@ endif
 INTERNAL_USERIMAGES_BINARY_PATHS := $(sort $(dir $(INTERNAL_USERIMAGES_DEPS)))
 
 ifeq (true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VERITY))
-INTERNAL_USERIMAGES_DEPS += $(BUILD_VERITY_TREE) $(APPEND2SIMG) $(VERITY_SIGNER)
+INTERNAL_USERIMAGES_DEPS += $(BUILD_VERITY_METADATA) $(BUILD_VERITY_TREE) $(APPEND2SIMG) $(VERITY_SIGNER)
 ifeq (true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VERITY_FEC))
 INTERNAL_USERIMAGES_DEPS += $(FEC)
 endif
@@ -1202,6 +1202,12 @@ recovery_sepolicy := \
     $(TARGET_RECOVERY_ROOT_OUT)/plat_property_contexts \
     $(TARGET_RECOVERY_ROOT_OUT)/vendor_property_contexts
 
+ifdef BOARD_ODM_SEPOLICY_DIRS
+recovery_sepolicy += \
+    $(TARGET_RECOVERY_ROOT_OUT)/odm_file_contexts \
+    $(TARGET_RECOVERY_ROOT_OUT)/odm_property_contexts
+endif
+
 # Passed into rsync from non-recovery root to recovery root, to avoid overwriting recovery-specific
 # SELinux files
 IGNORE_RECOVERY_SEPOLICY := $(patsubst $(TARGET_RECOVERY_OUT)/%,--exclude=/%,$(recovery_sepolicy))
@@ -1260,19 +1266,27 @@ else
 recovery_wipe :=
 endif
 
-# Prior to A/B update, we used to have:
+# Traditionally with non-A/B OTA we have:
 #   boot.img + recovery-from-boot.p + recovery-resource.dat = recovery.img.
-# recovery-resource.dat is needed only if we carry a patch of the boot and
-# recovery images and invoke install-recovery.sh on the first boot post an
-# OTA update.
+# recovery-resource.dat is needed only if we carry an imgdiff patch of the boot and recovery images
+# and invoke install-recovery.sh on the first boot post an OTA update.
 #
 # We no longer need that if one of the following conditions holds:
-#   a) We carry a full copy of the recovery image
+#   a) We carry a full copy of the recovery image - no patching needed
 #      (BOARD_USES_FULL_RECOVERY_IMAGE = true);
-#   b) We build a single image that contains boot and recovery both
-#      (BOARD_USES_RECOVERY_AS_BOOT = true).
+#   b) We build a single image that contains boot and recovery both - no recovery image to install
+#      (BOARD_USES_RECOVERY_AS_BOOT = true);
+#   c) We build the root into system image - not needing the resource file as we do bsdiff
+#      (BOARD_BUILD_SYSTEM_ROOT_IMAGE = true).
+#   d) We include the recovery DTBO image within recovery - not needing the resource file as we
+#      do bsdiff because boot and recovery will contain different number of entries
+#      (BOARD_INCLUDE_RECOVERY_DTBO = true).
+# Note that condition b) implies condition c), because of the earlier check in this file:
+# "BOARD_USES_RECOVERY_AS_BOOT = true must have BOARD_BUILD_SYSTEM_ROOT_IMAGE = true" (not vice
+# versa though).
 
-ifeq (,$(filter true, $(BOARD_USES_FULL_RECOVERY_IMAGE) $(BOARD_USES_RECOVERY_AS_BOOT)))
+ifeq (,$(filter true, $(BOARD_USES_FULL_RECOVERY_IMAGE) $(BOARD_BUILD_SYSTEM_ROOT_IMAGE) \
+  $(BOARD_INCLUDE_RECOVERY_DTBO)))
 # Named '.dat' so we don't attempt to use imgdiff for patching it.
 RECOVERY_RESOURCE_ZIP := $(TARGET_OUT)/etc/recovery-resource.dat
 else
@@ -1293,6 +1307,9 @@ ifdef BOARD_KERNEL_BASE
 endif
 ifdef BOARD_KERNEL_PAGESIZE
   INTERNAL_RECOVERYIMAGE_ARGS += --pagesize $(BOARD_KERNEL_PAGESIZE)
+endif
+ifdef BOARD_INCLUDE_RECOVERY_DTBO
+  INTERNAL_RECOVERYIMAGE_ARGS += --recovery_dtbo $(BOARD_PREBUILT_DTBOIMAGE)
 endif
 
 # Keys authorized to sign OTA packages this build will accept.  The
@@ -1559,15 +1576,21 @@ SYSTEMIMAGE_SOURCE_DIR := $(TARGET_OUT)
 # image size check calculation.
 ifneq ($(INSTALLED_RECOVERYIMAGE_TARGET),)
 ifneq ($(BOARD_USES_FULL_RECOVERY_IMAGE),true)
+ifneq (,$(filter true, $(BOARD_BUILD_SYSTEM_ROOT_IMAGE) $(BOARD_INCLUDE_RECOVERY_DTBO)))
+diff_tool := $(HOST_OUT_EXECUTABLES)/bsdiff
+else
+diff_tool := $(HOST_OUT_EXECUTABLES)/imgdiff
+endif
 intermediates := $(call intermediates-dir-for,PACKAGING,recovery_patch)
 RECOVERY_FROM_BOOT_PATCH := $(intermediates)/recovery_from_boot.p
-$(RECOVERY_FROM_BOOT_PATCH): $(INSTALLED_RECOVERYIMAGE_TARGET) \
-                             $(INSTALLED_BOOTIMAGE_TARGET) \
-			     $(HOST_OUT_EXECUTABLES)/imgdiff \
-	                     $(HOST_OUT_EXECUTABLES)/bsdiff
+$(RECOVERY_FROM_BOOT_PATCH): PRIVATE_DIFF_TOOL := $(diff_tool)
+$(RECOVERY_FROM_BOOT_PATCH): \
+		$(INSTALLED_RECOVERYIMAGE_TARGET) \
+		$(INSTALLED_BOOTIMAGE_TARGET) \
+		$(diff_tool)
 	@echo "Construct recovery from boot"
 	mkdir -p $(dir $@)
-	PATH=$(HOST_OUT_EXECUTABLES):$$PATH $(HOST_OUT_EXECUTABLES)/imgdiff $(INSTALLED_BOOTIMAGE_TARGET) $(INSTALLED_RECOVERYIMAGE_TARGET) $@
+	$(PRIVATE_DIFF_TOOL) $(INSTALLED_BOOTIMAGE_TARGET) $(INSTALLED_RECOVERYIMAGE_TARGET) $@
 else # $(BOARD_USES_FULL_RECOVERY_IMAGE) == true
 RECOVERY_FROM_BOOT_PATCH := $(INSTALLED_RECOVERYIMAGE_TARGET)
 endif
@@ -2313,7 +2336,6 @@ OTATOOLS :=  $(HOST_OUT_EXECUTABLES)/minigzip \
   $(HOST_OUT_EXECUTABLES)/sload_f2fs \
   $(HOST_OUT_EXECUTABLES)/simg2img \
   $(HOST_OUT_EXECUTABLES)/e2fsck \
-  $(HOST_OUT_EXECUTABLES)/build_verity_tree \
   $(HOST_OUT_EXECUTABLES)/generate_verity_key \
   $(HOST_OUT_EXECUTABLES)/verity_signer \
   $(HOST_OUT_EXECUTABLES)/verity_verifier \
@@ -2326,7 +2348,9 @@ OTATOOLS :=  $(HOST_OUT_EXECUTABLES)/minigzip \
   $(HOST_OUT_EXECUTABLES)/delta_generator \
   $(AVBTOOL) \
   $(BLK_ALLOC_TO_BASE_FS) \
-  $(BROTLI)
+  $(BROTLI) \
+  $(BUILD_VERITY_METADATA) \
+  $(BUILD_VERITY_TREE)
 
 ifeq (true,$(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VBOOT))
 OTATOOLS += \
@@ -2372,7 +2396,6 @@ BUILT_OTATOOLS_PACKAGE := $(PRODUCT_OUT)/otatools.zip
 $(BUILT_OTATOOLS_PACKAGE): zip_root := $(call intermediates-dir-for,PACKAGING,otatools)/otatools
 
 OTATOOLS_DEPS := \
-  system/extras/verity/build_verity_metadata.py \
   system/extras/ext4_utils/mke2fs.conf \
   external/avb/test/data/testkey_rsa4096.pem \
   $(sort $(shell find system/update_engine/scripts -name \*.pyc -prune -o -type f -print)) \
@@ -2534,6 +2557,9 @@ endif
 ifdef INSTALLED_2NDBOOTLOADER_TARGET
 	$(hide) cp $(INSTALLED_2NDBOOTLOADER_TARGET) $(zip_root)/$(PRIVATE_RECOVERY_OUT)/second
 endif
+ifdef BOARD_INCLUDE_RECOVERY_DTBO
+	$(hide) cp $(INSTALLED_DTBOIMAGE_TARGET) $(zip_root)/$(PRIVATE_RECOVERY_OUT)/recovery_dtbo
+endif
 ifdef INTERNAL_KERNEL_CMDLINE
 	$(hide) echo "$(INTERNAL_KERNEL_CMDLINE)" > $(zip_root)/$(PRIVATE_RECOVERY_OUT)/cmdline
 endif
@@ -2624,6 +2650,9 @@ ifdef BOARD_BOOTIMAGE_PARTITION_SIZE
 endif
 ifeq ($(INSTALLED_RECOVERYIMAGE_TARGET),)
 	$(hide) echo "no_recovery=true" >> $(zip_root)/META/misc_info.txt
+endif
+ifdef BOARD_INCLUDE_RECOVERY_DTBO
+	$(hide) echo "include_recovery_dtbo=true" >> $(zip_root)/META/misc_info.txt
 endif
 ifdef BOARD_RECOVERYIMAGE_PARTITION_SIZE
 	$(hide) echo "recovery_size=$(BOARD_RECOVERYIMAGE_PARTITION_SIZE)" >> $(zip_root)/META/misc_info.txt

@@ -109,6 +109,7 @@ class ErrorCode(object):
   TUNE_PARTITION_FAILURE = 3007
   APPLY_PATCH_FAILURE = 3008
 
+
 class ExternalError(RuntimeError):
   pass
 
@@ -460,6 +461,11 @@ def _BuildBootableImage(sourcedir, fs_config_file, info_dict=None,
   # "boot" or "recovery", without extension.
   partition_name = os.path.basename(sourcedir).lower()
 
+  if (partition_name == "recovery" and
+      info_dict.get("include_recovery_dtbo") == "true"):
+    fn = os.path.join(sourcedir, "recovery_dtbo")
+    cmd.extend(["--recovery_dtbo", fn])
+
   p = Run(cmd, stdout=subprocess.PIPE)
   p.communicate()
   assert p.returncode == 0, "mkbootimg of %s image failed" % (partition_name,)
@@ -591,11 +597,12 @@ def UnzipTemp(filename, pattern=None):
     cmd = ["unzip", "-o", "-q", filename, "-d", dirname]
     if pattern is not None:
       cmd.extend(pattern)
-    p = Run(cmd, stdout=subprocess.PIPE)
-    p.communicate()
+    p = Run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    stdoutdata, _ = p.communicate()
     if p.returncode != 0:
-      raise ExternalError("failed to unzip input target-files \"%s\"" %
-                          (filename,))
+      raise ExternalError(
+          "Failed to unzip input target-files \"{}\":\n{}".format(
+              filename, stdoutdata))
 
   tmp = MakeTempDir(prefix="targetfiles-")
   m = re.match(r"^(.*[.]zip)\+(.*[.]zip)$", filename, re.IGNORECASE)
@@ -718,18 +725,31 @@ def GetKeyPasswords(keylist):
 
 
 def GetMinSdkVersion(apk_name):
-  """Get the minSdkVersion delared in the APK. This can be both a decimal number
-  (API Level) or a codename.
+  """Gets the minSdkVersion declared in the APK.
+
+  It calls 'aapt' to query the embedded minSdkVersion from the given APK file.
+  This can be both a decimal number (API Level) or a codename.
+
+  Args:
+    apk_name: The APK filename.
+
+  Returns:
+    The parsed SDK version string.
+
+  Raises:
+    ExternalError: On failing to obtain the min SDK version.
   """
+  proc = Run(
+      ["aapt", "dump", "badging", apk_name], stdout=subprocess.PIPE,
+      stderr=subprocess.PIPE)
+  stdoutdata, stderrdata = proc.communicate()
+  if proc.returncode != 0:
+    raise ExternalError(
+        "Failed to obtain minSdkVersion: aapt return code {}:\n{}\n{}".format(
+            proc.returncode, stdoutdata, stderrdata))
 
-  p = Run(["aapt", "dump", "badging", apk_name], stdout=subprocess.PIPE)
-  output, err = p.communicate()
-  if err:
-    raise ExternalError("Failed to obtain minSdkVersion: aapt return code %s"
-        % (p.returncode,))
-
-  for line in output.split("\n"):
-    # Looking for lines such as sdkVersion:'23' or sdkVersion:'M'
+  for line in stdoutdata.split("\n"):
+    # Looking for lines such as sdkVersion:'23' or sdkVersion:'M'.
     m = re.match(r'sdkVersion:\'([^\']*)\'', line)
     if m:
       return m.group(1)
@@ -737,11 +757,20 @@ def GetMinSdkVersion(apk_name):
 
 
 def GetMinSdkVersionInt(apk_name, codename_to_api_level_map):
-  """Get the minSdkVersion declared in the APK as a number (API Level). If
-  minSdkVersion is set to a codename, it is translated to a number using the
-  provided map.
-  """
+  """Returns the minSdkVersion declared in the APK as a number (API Level).
 
+  If minSdkVersion is set to a codename, it is translated to a number using the
+  provided map.
+
+  Args:
+    apk_name: The APK filename.
+
+  Returns:
+    The parsed SDK version number.
+
+  Raises:
+    ExternalError: On failing to get the min SDK version number.
+  """
   version = GetMinSdkVersion(apk_name)
   try:
     return int(version)
@@ -750,8 +779,9 @@ def GetMinSdkVersionInt(apk_name, codename_to_api_level_map):
     if version in codename_to_api_level_map:
       return codename_to_api_level_map[version]
     else:
-      raise ExternalError("Unknown minSdkVersion: '%s'. Known codenames: %s"
-                          % (version, codename_to_api_level_map))
+      raise ExternalError(
+          "Unknown minSdkVersion: '{}'. Known codenames: {}".format(
+              version, codename_to_api_level_map))
 
 
 def SignFile(input_name, output_name, key, password, min_api_level=None,
@@ -795,12 +825,15 @@ def SignFile(input_name, output_name, key, password, min_api_level=None,
               key + OPTIONS.private_key_suffix,
               input_name, output_name])
 
-  p = Run(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+  p = Run(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+          stderr=subprocess.STDOUT)
   if password is not None:
     password += "\n"
-  p.communicate(password)
+  stdoutdata, _ = p.communicate(password)
   if p.returncode != 0:
-    raise ExternalError("signapk.jar failed: return code %s" % (p.returncode,))
+    raise ExternalError(
+        "Failed to run signapk.jar: return code {}:\n{}".format(
+            p.returncode, stdoutdata))
 
 
 def CheckSize(data, target, info_dict):
@@ -1711,10 +1744,11 @@ class BlockDifference(object):
                     '--output={}.new.dat.br'.format(self.path),
                     '{}.new.dat'.format(self.path)]
       print("Compressing {}.new.dat with brotli".format(self.partition))
-      p = Run(brotli_cmd, stdout=subprocess.PIPE)
-      p.communicate()
-      assert p.returncode == 0,\
-          'compression of {}.new.dat failed'.format(self.partition)
+      p = Run(brotli_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+      stdoutdata, _ = p.communicate()
+      assert p.returncode == 0, \
+          'Failed to compress {}.new.dat with brotli:\n{}'.format(
+              self.partition, stdoutdata)
 
       new_data_name = '{}.new.dat.br'.format(self.partition)
       ZipWrite(output_zip,
@@ -1828,35 +1862,47 @@ def ExtractPublicKey(cert):
 
 def MakeRecoveryPatch(input_dir, output_sink, recovery_img, boot_img,
                       info_dict=None):
-  """Generate a binary patch that creates the recovery image starting
-  with the boot image.  (Most of the space in these images is just the
-  kernel, which is identical for the two, so the resulting patch
-  should be efficient.)  Add it to the output zip, along with a shell
-  script that is run from init.rc on first boot to actually do the
-  patching and install the new recovery image.
+  """Generates the recovery-from-boot patch and writes the script to output.
 
-  recovery_img and boot_img should be File objects for the
-  corresponding images.  info should be the dictionary returned by
-  common.LoadInfoDict() on the input target_files.
+  Most of the space in the boot and recovery images is just the kernel, which is
+  identical for the two, so the resulting patch should be efficient. Add it to
+  the output zip, along with a shell script that is run from init.rc on first
+  boot to actually do the patching and install the new recovery image.
+
+  Args:
+    input_dir: The top-level input directory of the target-files.zip.
+    output_sink: The callback function that writes the result.
+    recovery_img: File object for the recovery image.
+    boot_img: File objects for the boot image.
+    info_dict: A dict returned by common.LoadInfoDict() on the input
+        target_files. Will use OPTIONS.info_dict if None has been given.
   """
-
   if info_dict is None:
     info_dict = OPTIONS.info_dict
 
-  full_recovery_image = info_dict.get("full_recovery_image", None) == "true"
+  full_recovery_image = info_dict.get("full_recovery_image") == "true"
 
   if full_recovery_image:
     output_sink("etc/recovery.img", recovery_img.data)
 
   else:
-    diff_program = ["imgdiff"]
+    system_root_image = info_dict.get("system_root_image") == "true"
     path = os.path.join(input_dir, "SYSTEM", "etc", "recovery-resource.dat")
-    if os.path.exists(path):
-      diff_program.append("-b")
-      diff_program.append(path)
-      bonus_args = "-b /system/etc/recovery-resource.dat"
-    else:
+    # With system-root-image, boot and recovery images will have mismatching
+    # entries (only recovery has the ramdisk entry) (Bug: 72731506). Use bsdiff
+    # to handle such a case.
+    if system_root_image:
+      diff_program = ["bsdiff"]
       bonus_args = ""
+      assert not os.path.exists(path)
+    else:
+      diff_program = ["imgdiff"]
+      if os.path.exists(path):
+        diff_program.append("-b")
+        diff_program.append(path)
+        bonus_args = "-b /system/etc/recovery-resource.dat"
+      else:
+        bonus_args = ""
 
     d = Difference(recovery_img, boot_img, diff_program=diff_program)
     _, _, patch = d.ComputePatch()
