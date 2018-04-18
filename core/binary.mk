@@ -7,6 +7,7 @@
 
 #######################################
 include $(BUILD_SYSTEM)/base_rules.mk
+include $(BUILD_SYSTEM)/use_lld_setup.mk
 #######################################
 
 ##################################################
@@ -505,7 +506,11 @@ ifeq ($(my_clang),true)
 my_target_global_cflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_$(my_prefix)GLOBAL_CFLAGS)
 my_target_global_conlyflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_$(my_prefix)GLOBAL_CONLYFLAGS) $(my_c_std_conlyflags)
 my_target_global_cppflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_$(my_prefix)GLOBAL_CPPFLAGS) $(my_cpp_std_cppflags)
-my_target_global_ldflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_$(my_prefix)GLOBAL_LDFLAGS)
+ifeq ($(my_use_clang_lld),true)
+  my_target_global_ldflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_$(my_prefix)GLOBAL_LLDFLAGS)
+else
+  my_target_global_ldflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)CLANG_$(my_prefix)GLOBAL_LDFLAGS)
+endif # my_use_clang_lld
 else
 my_target_global_cflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)$(my_prefix)GLOBAL_CFLAGS)
 my_target_global_conlyflags := $($(LOCAL_2ND_ARCH_VAR_PREFIX)$(my_prefix)GLOBAL_CONLYFLAGS) $(my_c_std_conlyflags)
@@ -1316,6 +1321,15 @@ ifneq ($(LOCAL_USE_VNDK),)
       $(if $(SPLIT_VENDOR.SHARED_LIBRARIES.$(l)),$(l).vendor,$(l)))
     my_header_libraries := $(foreach l,$(my_header_libraries),\
       $(if $(SPLIT_VENDOR.HEADER_LIBRARIES.$(l)),$(l).vendor,$(l)))
+  endif
+endif
+
+# Platform can use vendor public libraries. If a required shared lib is one of
+# the vendor public libraries, the lib is switched to the stub version of the lib.
+ifeq ($(LOCAL_USE_VNDK),)
+  ifneq ($(LOCAL_MODULE_MAKEFILE),$(SOONG_ANDROID_MK))
+    my_shared_libraries := $(foreach l,$(my_shared_libraries),\
+      $(if $(filter $(l),$(VENDOR_PUBLIC_LIBRARIES)),$(l).vendorpublic,$(l)))
   endif
 endif
 

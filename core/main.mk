@@ -52,6 +52,10 @@ ifneq ($(filter $(dont_bother_goals), $(MAKECMDGOALS)),)
 dont_bother := true
 endif
 
+.KATI_READONLY := SOONG_CONFIG_NAMESPACES
+.KATI_READONLY := $(foreach n,$(SOONG_CONFIG_NAMESPACES),SOONG_CONFIG_$(n))
+.KATI_READONLY := $(foreach n,$(SOONG_CONFIG_NAMESPACES),$(foreach k,$(SOONG_CONFIG_$(n)),SOONG_CONFIG_$(n)_$(k)))
+
 include $(SOONG_MAKEVARS_MK)
 
 include $(BUILD_SYSTEM)/clang/config.mk
@@ -319,6 +323,15 @@ ifndef is_sdk_build
 endif
 endif
 
+## asan ##
+
+# Install some additional tools on ASAN builds IFF we are also installing debug tools
+ifneq ($(filter address,$(SANITIZE_TARGET)),)
+ifneq (,$(filter debug,$(tags_to_install)))
+  tags_to_install += asan
+endif
+endif
+
 ## sdk ##
 
 ifdef is_sdk_build
@@ -345,10 +358,6 @@ endif
 BUILD_WITHOUT_PV := true
 
 ADDITIONAL_BUILD_PROPERTIES += net.bt.name=Android
-
-# Sets the location that the runtime dumps stack traces to when signalled
-# with SIGQUIT. Stack trace dumping is turned on for all android builds.
-ADDITIONAL_BUILD_PROPERTIES += dalvik.vm.stack-trace-dir=/data/anr
 
 # ------------------------------------------------------------
 # Define a function that, given a list of module tags, returns
@@ -935,6 +944,9 @@ debug_MODULES := $(sort \
 tests_MODULES := $(sort \
         $(call get-tagged-modules,tests) \
         $(call module-installed-files, $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_PACKAGES_TESTS)) \
+    )
+asan_MODULES := $(sort \
+        $(call module-installed-files, $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_PACKAGES_DEBUG_ASAN)) \
     )
 
 # TODO: Remove the 3 places in the tree that use ALL_DEFAULT_INSTALLED_MODULES

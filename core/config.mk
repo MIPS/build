@@ -178,6 +178,9 @@ endef
 # Set common values
 # ###############################################################
 
+# Initialize SOONG_CONFIG_NAMESPACES so that it isn't recursive.
+SOONG_CONFIG_NAMESPACES :=
+
 # Set the extensions used for various packages
 COMMON_PACKAGE_SUFFIX := .zip
 COMMON_JAVA_PACKAGE_SUFFIX := .jar
@@ -188,6 +191,12 @@ JAVA_TMPDIR_ARG := -Djava.io.tmpdir=$(TMPDIR)
 else
 JAVA_TMPDIR_ARG :=
 endif
+
+# ###############################################################
+# Broken build defaults
+# ###############################################################
+# Assume that all boards have duplicate rules right now.
+BUILD_BROKEN_DUP_RULES := true
 
 # ###############################################################
 # Include sub-configuration files
@@ -879,11 +888,13 @@ sepolicy_minor_vers := 0
 ifneq ($(sepolicy_major_vers), $(PLATFORM_SDK_VERSION))
 $(error sepolicy_major_version does not match PLATFORM_SDK_VERSION, please update.)
 endif
+
+TOT_SEPOLICY_VERSION := 10000.0
 ifneq (REL,$(PLATFORM_VERSION_CODENAME))
-    sepolicy_major_vers := 10000
-    sepolicy_minor_vers := 0
+    PLATFORM_SEPOLICY_VERSION := $(TOT_SEPOLICY_VERSION)
+else
+    PLATFORM_SEPOLICY_VERSION := $(join $(addsuffix .,$(sepolicy_major_vers)), $(sepolicy_minor_vers))
 endif
-PLATFORM_SEPOLICY_VERSION := $(join $(addsuffix .,$(sepolicy_major_vers)), $(sepolicy_minor_vers))
 sepolicy_major_vers :=
 sepolicy_minor_vers :=
 
@@ -891,6 +902,11 @@ sepolicy_minor_vers :=
 PLATFORM_SEPOLICY_COMPAT_VERSIONS := \
     26.0 \
     27.0
+
+.KATI_READONLY := \
+    PLATFORM_SEPOLICY_COMPAT_VERSIONS \
+    PLATFORM_SEPOLICY_VERSION \
+    TOT_SEPOLICY_VERSION \
 
 # ###############################################################
 # Set up final options.
@@ -942,6 +958,15 @@ SUPPORT_LIBRARY_ROOT := $(HISTORICAL_SDK_VERSIONS_ROOT)/current/support
 else
 SUPPORT_LIBRARY_ROOT := frameworks/support
 endif
+
+# Resolve LOCAL_SDK_VERSION to prebuilt module name, e.g.:
+# 23 -> sdk_v23
+# system_current -> sdk_vsystem_current
+# Note: this also replaces core_X with X (to be removed as there are prebuilts for core now).
+# $(1): An sdk version (LOCAL_SDK_VERSION)
+define resolve-prebuilt-sdk-module
+  sdk_v$(patsubst core_%,%,$(1))
+endef
 
 # Historical SDK version N is stored in $(HISTORICAL_SDK_VERSIONS_ROOT)/N.
 # The 'current' version is whatever this source tree is.
