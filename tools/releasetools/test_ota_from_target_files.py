@@ -50,17 +50,25 @@ def construct_target_files(secondary=False):
             "POSTINSTALL_OPTIONAL_system=true",
         ]))
 
+    ab_partitions = [
+        ('IMAGES', 'boot'),
+        ('IMAGES', 'system'),
+        ('IMAGES', 'vendor'),
+        ('RADIO', 'bootloader'),
+        ('RADIO', 'modem'),
+    ]
     # META/ab_partitions.txt
-    ab_partitions = ['boot', 'system', 'vendor']
     target_files_zip.writestr(
         'META/ab_partitions.txt',
-        '\n'.join(ab_partitions))
+        '\n'.join([partition[1] for partition in ab_partitions]))
 
     # Create dummy images for each of them.
-    for partition in ab_partitions:
-      target_files_zip.writestr('IMAGES/' + partition + '.img',
-                                os.urandom(len(partition)))
+    for path, partition in ab_partitions:
+      target_files_zip.writestr(
+          '{}/{}.img'.format(path, partition),
+          os.urandom(len(partition)))
 
+    # system_other shouldn't appear in META/ab_partitions.txt.
     if secondary:
       target_files_zip.writestr('IMAGES/system_other.img',
                                 os.urandom(len("system_other")))
@@ -766,8 +774,7 @@ class PropertyFilesTest(unittest.TestCase):
     zip_file = self.construct_zip_package(entries)
     property_files = TestPropertyFiles()
     with zipfile.ZipFile(zip_file, 'r') as zip_fp:
-      # pylint: disable=protected-access
-      raw_metadata = property_files._GetPropertyFilesString(
+      raw_metadata = property_files.GetPropertyFilesString(
           zip_fp, reserve_space=False)
       streaming_metadata = property_files.Finalize(zip_fp, len(raw_metadata))
     tokens = self._parse_property_files_string(streaming_metadata)
@@ -790,8 +797,7 @@ class PropertyFilesTest(unittest.TestCase):
     property_files = TestPropertyFiles()
     with zipfile.ZipFile(zip_file, 'r') as zip_fp:
       # First get the raw metadata string (i.e. without padding space).
-      # pylint: disable=protected-access
-      raw_metadata = property_files._GetPropertyFilesString(
+      raw_metadata = property_files.GetPropertyFilesString(
           zip_fp, reserve_space=False)
       raw_length = len(raw_metadata)
 
@@ -825,8 +831,7 @@ class PropertyFilesTest(unittest.TestCase):
     property_files = TestPropertyFiles()
     with zipfile.ZipFile(zip_file, 'r') as zip_fp:
       # First get the raw metadata string (i.e. without padding space).
-      # pylint: disable=protected-access
-      raw_metadata = property_files._GetPropertyFilesString(
+      raw_metadata = property_files.GetPropertyFilesString(
           zip_fp, reserve_space=False)
 
       # Should pass the test if verification passes.
@@ -883,8 +888,7 @@ class StreamingPropertyFilesTest(PropertyFilesTest):
     zip_file = self.construct_zip_package(entries)
     property_files = StreamingPropertyFiles()
     with zipfile.ZipFile(zip_file, 'r') as zip_fp:
-      # pylint: disable=protected-access
-      raw_metadata = property_files._GetPropertyFilesString(
+      raw_metadata = property_files.GetPropertyFilesString(
           zip_fp, reserve_space=False)
       streaming_metadata = property_files.Finalize(zip_fp, len(raw_metadata))
     tokens = self._parse_property_files_string(streaming_metadata)
@@ -907,8 +911,7 @@ class StreamingPropertyFilesTest(PropertyFilesTest):
     property_files = StreamingPropertyFiles()
     with zipfile.ZipFile(zip_file, 'r') as zip_fp:
       # First get the raw metadata string (i.e. without padding space).
-      # pylint: disable=protected-access
-      raw_metadata = property_files._GetPropertyFilesString(
+      raw_metadata = property_files.GetPropertyFilesString(
           zip_fp, reserve_space=False)
 
       # Should pass the test if verification passes.
@@ -1043,8 +1046,7 @@ class AbOtaPropertyFilesTest(PropertyFilesTest):
     zip_file = self.construct_zip_package_withValidPayload(with_metadata=True)
     property_files = AbOtaPropertyFiles()
     with zipfile.ZipFile(zip_file, 'r') as zip_fp:
-      # pylint: disable=protected-access
-      raw_metadata = property_files._GetPropertyFilesString(
+      raw_metadata = property_files.GetPropertyFilesString(
           zip_fp, reserve_space=False)
       property_files_string = property_files.Finalize(zip_fp, len(raw_metadata))
 
@@ -1059,8 +1061,7 @@ class AbOtaPropertyFilesTest(PropertyFilesTest):
     zip_file = self.construct_zip_package_withValidPayload(with_metadata=True)
     property_files = AbOtaPropertyFiles()
     with zipfile.ZipFile(zip_file, 'r') as zip_fp:
-      # pylint: disable=protected-access
-      raw_metadata = property_files._GetPropertyFilesString(
+      raw_metadata = property_files.GetPropertyFilesString(
           zip_fp, reserve_space=False)
 
       property_files.Verify(zip_fp, raw_metadata)
@@ -1093,8 +1094,7 @@ class NonAbOtaPropertyFilesTest(PropertyFilesTest):
     zip_file = self.construct_zip_package(entries)
     property_files = NonAbOtaPropertyFiles()
     with zipfile.ZipFile(zip_file) as zip_fp:
-      # pylint: disable=protected-access
-      raw_metadata = property_files._GetPropertyFilesString(
+      raw_metadata = property_files.GetPropertyFilesString(
           zip_fp, reserve_space=False)
       property_files_string = property_files.Finalize(zip_fp, len(raw_metadata))
     tokens = self._parse_property_files_string(property_files_string)
@@ -1111,8 +1111,7 @@ class NonAbOtaPropertyFilesTest(PropertyFilesTest):
     zip_file = self.construct_zip_package(entries)
     property_files = NonAbOtaPropertyFiles()
     with zipfile.ZipFile(zip_file) as zip_fp:
-      # pylint: disable=protected-access
-      raw_metadata = property_files._GetPropertyFilesString(
+      raw_metadata = property_files.GetPropertyFilesString(
           zip_fp, reserve_space=False)
 
       property_files.Verify(zip_fp, raw_metadata)

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2014 The Android Open Source Project
+# Copyright (C) 2018 The Android Open Source Project
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,8 +14,11 @@
 # limitations under the License.
 #
 
-# Don't modify this file - It's just an alias!
+#
+# Allow projects to define their own globally-available variables.
+#
 
-$(call inherit-product, $(SRC_TARGET_DIR)/product/sdk_phone_mips.mk)
-
-PRODUCT_NAME := sdk_mips
+#
+# Include definitions for prebuilt SDK, if present.
+#
+-include prebuilts/sdk/current/definitions.mk

@@ -314,6 +314,9 @@ LOCAL_RESOURCE_DIR := $(data_binding_res_out)
 LOCAL_AAPT_FLAGS += --auto-add-overlay --extra-packages com.android.databinding.library
 endif  # LOCAL_DATA_BINDING
 
+# Process Support Library dependencies.
+include $(BUILD_SYSTEM)/support_libraries.mk
+
 # If the module is a compressed module, we don't pre-opt it because its final
 # installation location will be the data partition.
 ifdef LOCAL_COMPRESSED_MODULE
@@ -486,7 +489,7 @@ ifeq ($(LOCAL_SDK_RES_VERSION),core_current)
 else ifneq ($(filter-out current system_current test_current,$(LOCAL_SDK_RES_VERSION))$(if $(TARGET_BUILD_APPS),$(filter current system_current test_current,$(LOCAL_SDK_RES_VERSION))),)
 # for released sdk versions, the platform resources were built into android.jar.
 framework_res_package_export := \
-    $(HISTORICAL_SDK_VERSIONS_ROOT)/$(LOCAL_SDK_RES_VERSION)/android.jar
+    $(call resolve-prebuilt-sdk-jar-path,$(LOCAL_SDK_RES_VERSION))
 else # LOCAL_SDK_RES_VERSION
 framework_res_package_export := \
     $(call intermediates-dir-for,APPS,framework-res,,COMMON)/package-export.apk
